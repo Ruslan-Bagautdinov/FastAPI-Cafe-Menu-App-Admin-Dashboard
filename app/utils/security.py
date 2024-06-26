@@ -9,11 +9,9 @@ import jwt
 from jwt import PyJWTError
 from datetime import datetime, timedelta
 
-
 from app.database.postgre_db import get_session
 from app.database.models import User
 from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")

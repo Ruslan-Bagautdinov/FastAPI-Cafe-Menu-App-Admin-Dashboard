@@ -40,3 +40,4 @@ app.include_router(approve_user_router, prefix="/api/approve_user")
 @app.get("/")
 async def root():
     return RedirectResponse(url='/docs')
+

@@ -1,4 +1,4 @@
-name: Python food_app_admin_api_driver
+name: Python food_app_admin_api
 
 on:
   push:
@@ -23,4 +23,4 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/food_app_admin_api_driver:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/food_app_admin_api:latest

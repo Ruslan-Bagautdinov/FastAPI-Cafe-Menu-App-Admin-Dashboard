@@ -7,7 +7,8 @@ from sqlalchemy import select
 from app.database.postgre_db import get_session
 from app.utils.security import get_password_hash, verify_password, create_access_token
 from app.database.models import User, UserProfile
-from app.database.schemas import UserCreate, UserLogin
+from app.database.schemas import UserRegister, UserCreate, UserLogin
+from app.database.crud import create_user_and_profile
 
 router = APIRouter()
 
@@ -27,9 +28,13 @@ async def login(userlogin: UserLogin,
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid email or password")
 
-    if not user.approved or user.role not in ['superuser', 'restaurant']:
+    if user.role not in ['superuser', 'restaurant']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="User not approved or incorrect role")
+                            detail="Incorrect role for user")
+
+    # if not user.approved:
+    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+    #                         detail="User not approved")
 
     access_token = create_access_token(data={"sub": user.email, "role": user.role})
 
@@ -37,31 +42,12 @@ async def login(userlogin: UserLogin,
 
 
 @router.post("/register")
-async def register_user(user_create: UserCreate,
-                        db: AsyncSession = Depends(get_session)):
+async def register_user(user_register: UserRegister, db: AsyncSession = Depends(get_session)):
 
-    query = select(User).filter(User.email == user_create.email)
-    result = await db.execute(query)
-    db_user = result.scalars().first()
-    if db_user:
-        raise HTTPException(status_code=400,
-                            detail="Email already registered")
+    hashed_password = get_password_hash(user_register.password)
 
-    hashed_password = get_password_hash(user_create.password)
+    db_user = await create_user_and_profile(db, user_register.email, hashed_password, "restaurant")
 
-    db_user = User(email=user_create.email,
-                   hashed_password=hashed_password,
-                   role="restaurant")
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-
-    # Create the UserProfile
-    db_profile = UserProfile(user_id=db_user.id)
-    db.add(db_profile)
-    await db.commit()
-    await db.refresh(db_profile)
-
-    return {"message": "User successfully registered",
-            "user_id": str(db_user.id)
-            }
+    return {"message": f"{db_user.role.capitalize()} successfully registered",
+            "email": str(db_user.email),
+            "user_id": str(db_user.id)}

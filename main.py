@@ -11,7 +11,7 @@ from app.database.postgre_db import init_db
 # routers
 from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
-
+from app.routers.restaurants import router as restaurants_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,8 +32,9 @@ app.add_middleware(
 )
 
 
-app.include_router(auth_router, prefix="/api/auth")
-app.include_router(users_router, prefix="/api/users")
+app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
+app.include_router(users_router, prefix="/api/users", tags=["user operations"])
+app.include_router(restaurants_router, prefix="/api/restaurants", tags=["restaurant operations"])
 
 
 @app.get("/")
@@ -41,7 +42,7 @@ async def root():
     return RedirectResponse(url='/docs')
 
 
-# @app.get("/docs", include_in_schema=False)
+# @app_cafe_admin.get("/docs", include_in_schema=False)
 # async def custom_swagger_ui_html(credentials: HTTPAuthorizationCredentials = Security(security)):
 #     return get_swagger_ui_html(
 #         openapi_url=app.openapi_url,

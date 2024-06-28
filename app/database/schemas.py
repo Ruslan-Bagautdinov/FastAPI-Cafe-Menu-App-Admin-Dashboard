@@ -130,3 +130,13 @@ class UserProfileUpdate(BaseModel):
     restaurant_currency: Optional[str] = None
     tables_amount: Optional[int] = None
 
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class EmailRequest(BaseModel):
+    recipient: str
+    subject: str
+    message: str
+

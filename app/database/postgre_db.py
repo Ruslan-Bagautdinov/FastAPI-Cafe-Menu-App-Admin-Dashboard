@@ -5,9 +5,9 @@ from sqlalchemy.orm import declarative_base
 
 import logging
 
-from app.config import HOME, WORK_DATABASE_URL, LOCAL_DATABASE_URL
+from app.config import HOME_DB, WORK_DATABASE_URL, LOCAL_DATABASE_URL
 
-if HOME:
+if HOME_DB is True:
     DATABASE_URL = LOCAL_DATABASE_URL
 else:
     DATABASE_URL = WORK_DATABASE_URL
@@ -37,3 +37,5 @@ async def init_db():
 async def get_session() -> AsyncSession:
     async with async_session() as session:
         yield session
+
+print(DATABASE_URL)

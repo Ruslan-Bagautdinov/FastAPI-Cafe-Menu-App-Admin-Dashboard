@@ -11,6 +11,7 @@ from sqlalchemy import (Column,
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from decimal import Decimal
+from datetime import datetime, timedelta
 import uuid
 
 # own import
@@ -18,7 +19,9 @@ from app.database.postgre_db import Base
 
 
 class User(Base):
+
     __tablename__ = "users"
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String, index=True)
@@ -35,6 +38,7 @@ class User(Base):
 
 
 class UserProfile(Base):
+
     __tablename__ = "profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -51,7 +55,18 @@ class UserProfile(Base):
     restaurant: Mapped["Restaurant"] = relationship("Restaurant", back_populates="profiles", cascade="all, delete")
 
 
+class ResetToken(Base):
+
+    __tablename__ = "reset_tokens"
+
+    token = Column(String, primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    expiry_time = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(hours=1))
+    user = relationship("User", backref="reset_tokens")
+
+
 class Restaurant(Base):
+
     __tablename__ = 'restaurants'
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)

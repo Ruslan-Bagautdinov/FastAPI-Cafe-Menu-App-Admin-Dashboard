@@ -56,40 +56,45 @@ async def update_dish_handler(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != 'superuser' and current_user.email != dish.email:
-        raise HTTPException(status_code=403, detail="You do not have permission to update a dish for this email.")
+    if current_user.role == 'superuser' or current_user.email == dish.email:
+        try:
+            updated_dish = await update_dish(
+                db,
+                dish_id=dish.dish_id,
+                name=dish.name,
+                description=dish.description,
+                price=dish.price,
+                photo=dish.photo,
+                extra=dish.extra
+            )
+            return DishResponse(
+                id=updated_dish.id,
+                restaurant_id=updated_dish.restaurant_id,
+                category_id=updated_dish.category_id,
+                name=updated_dish.name,
+                photo=updated_dish.photo,
+                description=updated_dish.description,
+                price=updated_dish.price,
+                extra=updated_dish.extra
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
-    try:
-        updated_dish = await update_dish(
-            db,
-            dish_id=dish.dish_id,
-            name=dish.name,
-            description=dish.description,
-            price=dish.price,
-            photo=dish.photo,
-            extra=dish.extra
-        )
-        return DishResponse(
-            id=updated_dish.id,
-            restaurant_id=updated_dish.restaurant_id,
-            category_id=updated_dish.category_id,
-            name=updated_dish.name,
-            photo=updated_dish.photo,
-            description=updated_dish.description,
-            price=updated_dish.price,
-            extra=updated_dish.extra
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    else:
+        raise HTTPException(status_code=403, detail="You do not have permission to update a dish for this email.")
 
 
 @router.delete("/delete/")
 async def delete_dish_handler(
     dish: DishDelete,
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
-    try:
-        await delete_dish(db, dish_id=dish.dish_id)
-        return {"message": "Dish deleted successfully"}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    if current_user.role == 'superuser' or current_user.email == dish.email:
+        try:
+            await delete_dish(db, dish_id=dish.dish_id)
+            return {"message": f"Dish {dish.dish_id} deleted successfully"}
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    else:
+        raise HTTPException(status_code=403, detail="You do not have permission to delete a dish for this email.")

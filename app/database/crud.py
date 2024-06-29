@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List,  Optional
@@ -54,6 +54,32 @@ async def get_user_profile_by_email(db: AsyncSession,
     profile = result.scalars().first()
     return profile
 
+
+async def get_restaurant_by_id(db: AsyncSession, restaurant_id: int):
+
+    result = await db.execute(
+        select(Restaurant).where(Restaurant.id == restaurant_id)
+    )
+    return result.scalars().first()
+
+
+async def get_category_by_id(db: AsyncSession,
+                             category_id):
+
+    result = await db.execute(select(Category).where(Category.id == category_id))
+    return result.scalars().first()
+
+
+async def get_all_categories(db: AsyncSession):
+
+    result = await db.execute(select(Category))
+    return result.scalars().all()
+
+
+async def get_next_dish_id(db: AsyncSession):
+    result = await db.execute(select(func.max(Dish.id)))
+    max_id = result.scalar()
+    return max_id + 1 if max_id is not None else 1
 
 async def create_user_and_profile(db: AsyncSession,
                                   email: str,
@@ -158,53 +184,47 @@ async def delete_user_and_profile(db: AsyncSession,
     await db.commit()
 
 
-async def get_all_categories(db: AsyncSession):
-
-    result = await db.execute(select(Category))
-    return result.scalars().all()
-
-
-async def get_category_by_id(db: AsyncSession,
-                             category_id):
-
-    result = await db.execute(select(Category).where(Category.id == category_id))
-    return result.scalars().first()
-
-
 async def create_dish(db: AsyncSession,
-                      email,
-                      category_id,
-                      name,
-                      description,
-                      price,
-                      photo=None,
-                      extra=None):
+                      email: str,
+                      category_id: int,
+                      name: str,
+                      description: str,
+                      price: float,
+                      photo: str = None,
+                      extra: dict = None):
 
-    async with db.begin():
-        profile = await get_user_profile_by_email(db, email)
-        if not profile:
-            raise ValueError("User profile not found")
+    profile = await get_user_profile_by_email(db, email)
+    if not profile:
+        raise ValueError("User profile not found")
 
-        restaurant = profile.restaurant
-        if not restaurant:
-            raise ValueError("Restaurant not found for the user profile")
+    restaurant_id = profile.restaurant_id
+    if not restaurant_id:
+        raise ValueError("Restaurant not found for the user profile")
 
-        category = await get_category_by_id(db, category_id)
-        if not category:
-            raise ValueError("Category not found")
+    restaurant = await get_restaurant_by_id(db, restaurant_id)
+    if not restaurant:
+        raise ValueError("Restaurant not found")
 
-        dish = Dish(
-            restaurant_id=restaurant.id,
-            category_id=category_id,
-            name=name,
-            photo=photo,
-            description=description,
-            price=price,
-            extra=extra
-        )
-        db.add(dish)
-        await db.commit()
-        return dish
+    category = await get_category_by_id(db, category_id)
+    if not category:
+        raise ValueError("Category not found")
+
+    next_id = await get_next_dish_id(db)
+
+    dish = Dish(
+        id=next_id,
+        restaurant_id=restaurant_id,
+        category_id=category_id,
+        name=name,
+        photo=photo,
+        description=description,
+        price=price,
+        extra=extra
+    )
+    db.add(dish)
+    await db.commit()
+    await db.refresh(dish)
+    return dish
 
 
 async def update_dish(db: AsyncSession,
@@ -215,52 +235,50 @@ async def update_dish(db: AsyncSession,
                       photo=None,
                       extra=None):
 
-    async with db.begin():
-        result = await db.execute(select(Dish).where(Dish.id == dish_id))
-        dish = result.scalars().first()
-        if not dish:
-            raise ValueError("Dish not found")
+    result = await db.execute(select(Dish).where(Dish.id == dish_id))
+    dish = result.scalars().first()
+    if not dish:
+        raise ValueError("Dish not found")
 
-        if name is not None:
-            dish.name = name
-        if description is not None:
-            dish.description = description
-        if price is not None:
-            dish.price = price
-        if photo is not None:
-            dish.photo = photo
-        if extra is not None:
-            dish.extra = extra
+    if name is not None:
+        dish.name = name
+    if description is not None:
+        dish.description = description
+    if price is not None:
+        dish.price = price
+    if photo is not None:
+        dish.photo = photo
+    if extra is not None:
+        dish.extra = extra
 
-        await db.commit()
-        return dish
+    await db.commit()
+    return dish
 
 
 async def delete_dish(db: AsyncSession,
                       dish_id):
 
-    async with db.begin():
-        result = await db.execute(select(Dish).where(Dish.id == dish_id))
-        dish = result.scalars().first()
-        if not dish:
-            raise ValueError("Dish not found")
+    result = await db.execute(select(Dish).where(Dish.id == dish_id))
+    dish = result.scalars().first()
+    if not dish:
+        raise ValueError("Dish not found")
 
-        await db.delete(dish)
-        await db.commit()
+    await db.delete(dish)
+    await db.commit()
 
 
 async def get_dishes_by_email(db: AsyncSession,
                               email):
-    async with db.begin():
-        profile = await get_user_profile_by_email(db, email)
-        if not profile:
-            raise ValueError("User profile not found")
 
-        restaurant = profile.restaurant
-        if not restaurant:
-            raise ValueError("Restaurant not found for the user profile")
+    profile = await get_user_profile_by_email(db, email)
+    if not profile:
+        raise ValueError("User profile not found")
 
-        result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
-        dishes = result.scalars().all()
-        return dishes
+    restaurant = profile.restaurant
+    if not restaurant:
+        raise ValueError("Restaurant not found for the user profile")
+
+    result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
+    dishes = result.scalars().all()
+    return dishes
 

@@ -233,7 +233,8 @@ class DishDelete(BaseModel):
     Schema for deleting a dish.
 
     Attributes:
+        email (str): The email address of the user.
         dish_id (int): The ID of the dish to delete.
     """
+    email: str
     dish_id: int = Field(..., description="ID of the dish to delete")
-

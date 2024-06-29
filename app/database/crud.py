@@ -1,5 +1,6 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List,  Optional
 from decimal import Decimal
@@ -119,3 +120,25 @@ async def update_user_profile_by_email(db: AsyncSession, email: str, profile_upd
     await db.refresh(profile)
 
     return profile
+
+
+async def delete_user_and_profile(db: AsyncSession, email: str):
+    # Fetch the user and their profile
+    query = select(User).filter(User.email == email).options(selectinload(User.profile).selectinload(UserProfile.restaurant))
+    result = await db.execute(query)
+    db_user = result.scalars().first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check if the user has a profile and if the profile has a restaurant
+    if db_user.profile and db_user.profile.restaurant_id:
+        # Delete the restaurant
+        restaurant_query = delete(Restaurant).where(Restaurant.id == db_user.profile.restaurant_id)
+        await db.execute(restaurant_query)
+
+    # Delete the user
+    user_query = delete(User).where(User.email == email)
+    await db.execute(user_query)
+
+    await db.commit()

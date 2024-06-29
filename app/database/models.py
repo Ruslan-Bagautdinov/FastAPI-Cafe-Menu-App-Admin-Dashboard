@@ -47,7 +47,7 @@ class UserProfile(Base):
     restaurant_name: Mapped[str] = mapped_column(index=True, nullable=True)
     restaurant_photo: Mapped[str] = mapped_column(index=True, nullable=True)
     telegram: Mapped[str] = mapped_column(index=True, nullable=True)
-    rating: Mapped[str] = mapped_column(index=True, nullable=True)
+    rating: Mapped[Decimal] = mapped_column(Numeric(2, 1), nullable=True)
     restaurant_currency: Mapped[str] = mapped_column(index=True, nullable=True)
     tables_amount: Mapped[int] = mapped_column(nullable=False)
 
@@ -130,3 +130,4 @@ class WaiterCall(Base):
     restaurant_id: Mapped[int] = mapped_column(Integer, nullable=False)
     table_id: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False)
+

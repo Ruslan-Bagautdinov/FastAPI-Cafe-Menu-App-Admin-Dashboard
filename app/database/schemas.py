@@ -1,5 +1,9 @@
-from pydantic import BaseModel, EmailStr, RootModel, field_validator
+from pydantic import (BaseModel,
+                      EmailStr,
+                      field_validator,
+                      model_validator)
 from typing import Optional, Dict, Any
+from decimal import Decimal
 import uuid
 
 
@@ -94,9 +98,14 @@ class UserProfileResponse(BaseModel):
     restaurant_name: Optional[str]
     restaurant_photo: Optional[str]
     telegram: Optional[str]
-    rating: Optional[str]
+    rating: Optional[Decimal]
     restaurant_currency: Optional[str]
     tables_amount: int
+
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: f"{v:.1f}"  # Ensure one digit after the decimal point
+        }
 
 
 class RestaurantsResponse(BaseModel):
@@ -126,9 +135,17 @@ class UserProfileUpdate(BaseModel):
     restaurant_name: Optional[str] = None
     restaurant_photo: Optional[str] = None
     telegram: Optional[str] = None
-    rating: Optional[float] = None
+    rating: Optional[Decimal] = None
     restaurant_currency: Optional[str] = None
     tables_amount: Optional[int] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_rating(cls, values):
+        rating = values.get('rating')
+        if rating is not None:
+            values['rating'] = round(rating, 1)
+        return values
 
 
 class PasswordResetRequest(BaseModel):

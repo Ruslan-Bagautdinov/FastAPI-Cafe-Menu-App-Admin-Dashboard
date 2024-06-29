@@ -126,7 +126,7 @@ class UserProfileUpdate(BaseModel):
     restaurant_name: Optional[str] = None
     restaurant_photo: Optional[str] = None
     telegram: Optional[str] = None
-    rating: Optional[str] = None
+    rating: Optional[float] = None
     restaurant_currency: Optional[str] = None
     tables_amount: Optional[int] = None
 

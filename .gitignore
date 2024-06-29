@@ -1,0 +1,8 @@
+.venv/
+.idea/
+.git/
+.stuff/
+**/__pycache__/
+.env
+ЗАДАЧИ.txt
+WORK_DATABASE_URL=postgresql+asyncp.txt

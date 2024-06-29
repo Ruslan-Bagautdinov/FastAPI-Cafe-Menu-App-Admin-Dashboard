@@ -57,24 +57,31 @@ async def send_email(subject: str, recipient: str, content: str):
 
 @router.post("/send-email/")
 async def send_email_endpoint(email_request: EmailRequest):
-    await send_email(email_request.recipient, email_request.subject, email_request.message)
+
+    await send_email(email_request.recipient,
+                     email_request.subject,
+                     email_request.message
+                     )
+
     return {"message": f"Email to {email_request.recipient} sent successfully"}
 
 
 @router.post("/request-reset/")
-async def request_password_reset(password_reset_request: PasswordResetRequest, session: AsyncSession = Depends(get_session)):
+async def request_password_reset(password_reset_request: PasswordResetRequest,
+                                 db: AsyncSession = Depends(get_session)):
+
     email = password_reset_request.email
     token = secrets.token_urlsafe(32)
 
-    result = await session.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     reset_token = ResetToken(token=token, user_id=user.id)
-    session.add(reset_token)
-    await session.commit()
+    db.add(reset_token)
+    await db.commit()
 
     await send_email(
         subject="Password Reset Request",
@@ -87,17 +94,17 @@ async def request_password_reset(password_reset_request: PasswordResetRequest, s
 
 
 @router.get("/reset-password/")
-async def reset_password(token: str, session: AsyncSession = Depends(get_session)):
+async def reset_password(token: str, db: AsyncSession = Depends(get_session)):
 
-    result = await session.execute(select(ResetToken).where(ResetToken.token == token))
+    result = await db.execute(select(ResetToken).where(ResetToken.token == token))
     reset_token = result.scalars().first()
 
     if not reset_token:
         raise HTTPException(status_code=400, detail="Invalid token")
 
     if reset_token.expiry_time < datetime.utcnow():
-        await session.delete(reset_token)
-        await session.commit()
+        await db.delete(reset_token)
+        await db.commit()
         raise HTTPException(status_code=400, detail="Token has expired")
 
     new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
@@ -105,7 +112,7 @@ async def reset_password(token: str, session: AsyncSession = Depends(get_session
     hashed_password = get_password_hash(new_password)
 
     user_id = reset_token.user_id
-    result = await session.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
 
     if not user:
@@ -113,9 +120,9 @@ async def reset_password(token: str, session: AsyncSession = Depends(get_session
 
     user.hashed_password = hashed_password
 
-    await session.delete(reset_token)
+    await db.delete(reset_token)
 
-    await session.commit()
+    await db.commit()
 
     await send_email(
         subject="Your New Password",

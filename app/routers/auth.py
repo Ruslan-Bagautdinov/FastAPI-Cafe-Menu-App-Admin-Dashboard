@@ -42,7 +42,8 @@ async def login(userlogin: UserLogin,
 
 
 @router.post("/register")
-async def register_user(user_register: UserRegister, db: AsyncSession = Depends(get_session)):
+async def register_user(user_register: UserRegister,
+                        db: AsyncSession = Depends(get_session)):
 
     hashed_password = get_password_hash(user_register.password)
 

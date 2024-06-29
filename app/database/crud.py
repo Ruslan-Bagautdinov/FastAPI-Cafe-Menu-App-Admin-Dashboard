@@ -6,17 +6,24 @@ from typing import Dict, Any, List,  Optional
 from decimal import Decimal
 import uuid
 
-from app.database.models import User, UserProfile, Restaurant
+from app.database.models import (User,
+                                 UserProfile,
+                                 Restaurant,
+                                 Category,
+                                 Dish
+                                 )
 
 
-async def get_superusers(session: AsyncSession) -> List[User]:
-    result = await session.execute(select(User).where(User.role == 'superuser'))
+async def get_superusers(db: AsyncSession) -> List[User]:
+
+    result = await db.execute(select(User).where(User.role == 'superuser'))
     superusers = result.scalars().all()
     return list(superusers)
 
 
-async def get_all_user_profiles(session: AsyncSession) -> Dict[uuid.UUID, Dict[str, Any]]:
-    result = await session.execute(select(UserProfile).join(User))
+async def get_all_user_profiles(db: AsyncSession) -> Dict[uuid.UUID, Dict[str, Any]]:
+
+    result = await db.execute(select(UserProfile).join(User))
     profiles = result.scalars().all()
 
     profile_dict = {}
@@ -38,15 +45,21 @@ async def get_all_user_profiles(session: AsyncSession) -> Dict[uuid.UUID, Dict[s
     return profile_dict
 
 
-async def get_user_profile_by_email(session: AsyncSession, email: str) -> Optional[UserProfile]:
-    result = await session.execute(
+async def get_user_profile_by_email(db: AsyncSession,
+                                    email: str) -> Optional[UserProfile]:
+
+    result = await db.execute(
         select(UserProfile).join(User).where(User.email == email)
     )
     profile = result.scalars().first()
     return profile
 
 
-async def create_user_and_profile(db: AsyncSession, email: str, hashed_password: str, role: str) -> User:
+async def create_user_and_profile(db: AsyncSession,
+                                  email: str,
+                                  hashed_password: str,
+                                  role: str) -> User:
+
     query = select(User).filter(User.email == email)
     result = await db.execute(query)
     db_user = result.scalars().first()
@@ -87,7 +100,10 @@ async def create_user_and_profile(db: AsyncSession, email: str, hashed_password:
     return db_user
 
 
-async def update_user_profile_by_email(db: AsyncSession, email: str, profile_update: dict):
+async def update_user_profile_by_email(db: AsyncSession,
+                                       email: str,
+                                       profile_update: dict):
+
     query = select(UserProfile).join(User).filter(User.email == email)
     result = await db.execute(query)
     profile = result.scalars().first()
@@ -122,8 +138,9 @@ async def update_user_profile_by_email(db: AsyncSession, email: str, profile_upd
     return profile
 
 
-async def delete_user_and_profile(db: AsyncSession, email: str):
-    # Fetch the user and their profile
+async def delete_user_and_profile(db: AsyncSession,
+                                  email: str):
+
     query = select(User).filter(User.email == email).options(selectinload(User.profile).selectinload(UserProfile.restaurant))
     result = await db.execute(query)
     db_user = result.scalars().first()
@@ -131,14 +148,119 @@ async def delete_user_and_profile(db: AsyncSession, email: str):
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check if the user has a profile and if the profile has a restaurant
     if db_user.profile and db_user.profile.restaurant_id:
-        # Delete the restaurant
         restaurant_query = delete(Restaurant).where(Restaurant.id == db_user.profile.restaurant_id)
         await db.execute(restaurant_query)
 
-    # Delete the user
     user_query = delete(User).where(User.email == email)
     await db.execute(user_query)
 
     await db.commit()
+
+
+async def get_all_categories(db: AsyncSession):
+
+    result = await db.execute(select(Category))
+    return result.scalars().all()
+
+
+async def get_category_by_id(db: AsyncSession,
+                             category_id):
+
+    result = await db.execute(select(Category).where(Category.id == category_id))
+    return result.scalars().first()
+
+
+async def create_dish(db: AsyncSession,
+                      email,
+                      category_id,
+                      name,
+                      description,
+                      price,
+                      photo=None,
+                      extra=None):
+
+    async with db.begin():
+        profile = await get_user_profile_by_email(db, email)
+        if not profile:
+            raise ValueError("User profile not found")
+
+        restaurant = profile.restaurant
+        if not restaurant:
+            raise ValueError("Restaurant not found for the user profile")
+
+        category = await get_category_by_id(db, category_id)
+        if not category:
+            raise ValueError("Category not found")
+
+        dish = Dish(
+            restaurant_id=restaurant.id,
+            category_id=category_id,
+            name=name,
+            photo=photo,
+            description=description,
+            price=price,
+            extra=extra
+        )
+        db.add(dish)
+        await db.commit()
+        return dish
+
+
+async def update_dish(db: AsyncSession,
+                      dish_id,
+                      name=None,
+                      description=None,
+                      price=None,
+                      photo=None,
+                      extra=None):
+
+    async with db.begin():
+        result = await db.execute(select(Dish).where(Dish.id == dish_id))
+        dish = result.scalars().first()
+        if not dish:
+            raise ValueError("Dish not found")
+
+        if name is not None:
+            dish.name = name
+        if description is not None:
+            dish.description = description
+        if price is not None:
+            dish.price = price
+        if photo is not None:
+            dish.photo = photo
+        if extra is not None:
+            dish.extra = extra
+
+        await db.commit()
+        return dish
+
+
+async def delete_dish(db: AsyncSession,
+                      dish_id):
+
+    async with db.begin():
+        result = await db.execute(select(Dish).where(Dish.id == dish_id))
+        dish = result.scalars().first()
+        if not dish:
+            raise ValueError("Dish not found")
+
+        await db.delete(dish)
+        await db.commit()
+
+
+async def get_dishes_by_email(db: AsyncSession,
+                              email):
+    async with db.begin():
+        profile = await get_user_profile_by_email(db, email)
+        if not profile:
+            raise ValueError("User profile not found")
+
+        restaurant = profile.restaurant
+        if not restaurant:
+            raise ValueError("Restaurant not found for the user profile")
+
+        result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
+        dishes = result.scalars().all()
+        return dishes
+

@@ -1,4 +1,5 @@
 from pydantic import (BaseModel,
+                      Field,
                       EmailStr,
                       field_validator,
                       model_validator)
@@ -149,11 +150,90 @@ class UserProfileUpdate(BaseModel):
 
 
 class PasswordResetRequest(BaseModel):
+    """
+    Schema for requesting a password reset.
+
+    Attributes:
+        email (EmailStr): The email address associated with the user account requesting a password reset.
+    """
     email: EmailStr
 
 
 class EmailRequest(BaseModel):
+    """
+    Schema for sending an email.
+
+    Attributes:
+        recipient (str): The email address of the recipient.
+        subject (str): The subject of the email.
+        message (str): The content of the email message.
+    """
     recipient: str
     subject: str
     message: str
+
+
+class DishResponse(BaseModel):
+    id: int
+    restaurant_id: int
+    category_id: int
+    name: str
+    photo: Optional[str] = None
+    description: str
+    price: float
+    extra: Optional[Dict] = None
+
+
+class DishCreate(BaseModel):
+    """
+        Schema for creating a new dish.
+
+        Attributes:
+            email (str): The email address of the user.
+            category_id (int): The ID of the category to which the dish belongs.
+            name (str): The name of the dish.
+            description (str): A description of the dish.
+            price (float): The price of the dish.
+            photo (Optional[str]): A URL or reference to a photo of the dish, if available.
+            extra (Optional[dict]): Additional information or attributes related to the dish, if any.
+        """
+    email: str
+    category_id: int
+    name: str
+    description: str
+    price: float
+    photo: Optional[str] = None
+    extra: Optional[dict] = None
+
+
+class DishUpdate(BaseModel):
+    """
+     Schema for updating an existing dish.
+
+     Attributes:
+         email (str): The email address of the user.
+         dish_id (int): The ID of the dish to update.
+         name (Optional[str]): The updated name of the dish, if applicable.
+         description (Optional[str]): The updated description of the dish, if applicable.
+         price (Optional[float]): The updated price of the dish, if applicable.
+         photo (Optional[str]): The updated URL or reference to a photo of the dish, if applicable.
+         extra (Optional[dict]): Updated additional information or attributes related to the dish, if any.
+     """
+    email: str
+    dish_id: int = Field(..., description="ID of the dish to update")
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    photo: Optional[str] = None
+    extra: Optional[dict] = None
+
+
+class DishDelete(BaseModel):
+    """
+    Schema for deleting a dish.
+
+    Attributes:
+        dish_id (int): The ID of the dish to delete.
+    """
+    dish_id: int = Field(..., description="ID of the dish to delete")
 

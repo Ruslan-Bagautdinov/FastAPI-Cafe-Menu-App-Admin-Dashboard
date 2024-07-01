@@ -3,7 +3,8 @@ from pydantic import (BaseModel,
                       EmailStr,
                       condecimal,
                       field_validator,
-                      model_validator)
+                      model_validator
+                      )
 from typing import Optional, Dict, Any
 from decimal import Decimal
 import uuid
@@ -158,6 +159,20 @@ class PasswordResetRequest(BaseModel):
         email (EmailStr): The email address associated with the user account requesting a password reset.
     """
     email: EmailStr
+
+
+class ChangePasswordRequest(BaseModel):
+    email: str
+    old_password: str
+    new_password: str
+
+    @model_validator(mode='before')
+    def check_passwords_not_equal(cls, values):
+        old_password = values.get('old_password')
+        new_password = values.get('new_password')
+        if old_password == new_password:
+            raise ValueError('New password must be different from the old password')
+        return values
 
 
 class EmailRequest(BaseModel):

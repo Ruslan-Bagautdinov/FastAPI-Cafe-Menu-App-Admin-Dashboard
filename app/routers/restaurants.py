@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from typing import Optional
 
-# own import
+# Own imports
 from app.database.postgre_db import get_session
 from app.utils.security import get_current_user
-from app.database.models import User, UserProfile, Restaurant
+from app.database.models import User
 
 from app.database.schemas import (RestaurantsResponse,
                                   UserProfileResponse,
@@ -19,10 +18,22 @@ from app.database.crud import (get_all_user_profiles,
 router = APIRouter()
 
 
-@router.get("/get_all_restaurants", response_model=RestaurantsResponse)
+@router.get("/get_all_restaurants", response_model=RestaurantsResponse, description="Retrieve all restaurants for superusers.")
 async def all_restaurants(current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_session)):
+    """
+    Retrieve all restaurants for superusers.
 
+    Args:
+        current_user (User): The current authenticated user, obtained from the dependency.
+        db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
+
+    Returns:
+        RestaurantsResponse: A response containing all restaurants.
+
+    Raises:
+        HTTPException: 403 Forbidden if the current user is not a superuser.
+    """
     if current_user.role != 'superuser':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only superusers can access this endpoint")
 
@@ -31,11 +42,24 @@ async def all_restaurants(current_user: User = Depends(get_current_user),
     return {"root": restaurants}
 
 
-@router.get("/get_restaurant", response_model=Optional[UserProfileResponse])
+@router.get("/get_restaurant", response_model=Optional[UserProfileResponse], description="Retrieve a user profile by email.")
 async def get_profile_by_email(email: str,
                                current_user: User = Depends(get_current_user),
                                db: AsyncSession = Depends(get_session)):
+    """
+    Retrieve a user profile by email.
 
+    Args:
+        email (str): The email of the user whose profile is to be retrieved.
+        current_user (User): The current authenticated user, obtained from the dependency.
+        db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
+
+    Returns:
+        Optional[UserProfileResponse]: The user profile if found, otherwise None.
+
+    Raises:
+        HTTPException: 403 Forbidden if the current user does not have permission to access this profile.
+    """
     if current_user.role == 'superuser' or current_user.email == email:
         profile = await get_user_profile_by_email(db, email)
         if profile:
@@ -55,12 +79,28 @@ async def get_profile_by_email(email: str,
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-@router.put("/update_restaurant", response_model=Optional[UserProfileResponse])
+
+@router.put("/update_restaurant", response_model=Optional[UserProfileResponse], description="Update a user profile by email.")
 async def update_profile_by_email(email: str,
                                   profile_update: UserProfileUpdate,
                                   current_user: User = Depends(get_current_user),
                                   db: AsyncSession = Depends(get_session)):
+    """
+    Update a user profile by email.
 
+    Args:
+        email (str): The email of the user whose profile is to be updated.
+        profile_update (UserProfileUpdate): The updated profile data.
+        current_user (User): The current authenticated user, obtained from the dependency.
+        db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
+
+    Returns:
+        Optional[UserProfileResponse]: The updated user profile if found, otherwise None.
+
+    Raises:
+        HTTPException: 403 Forbidden if the current user does not have permission to update this profile.
+        HTTPException: 404 Not Found if the profile is not found.
+    """
     if current_user.role == 'superuser' or current_user.email == email:
         profile = await update_user_profile_by_email(db, email, profile_update.dict(exclude_unset=True))
     else:
@@ -70,4 +110,3 @@ async def update_profile_by_email(email: str,
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
 
     return profile
-

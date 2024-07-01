@@ -35,9 +35,9 @@ app.add_middleware(
 
 
 app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
-app.include_router(users_router, prefix="/api/users", tags=["user operations"])
+app.include_router(users_router, prefix="/api/users", tags=["superuser operations"])
 app.include_router(restaurants_router, prefix="/api/restaurants", tags=["restaurant operations"])
-app.include_router(emails_router, prefix="/api/emails", tags=["emails operations"])
+app.include_router(emails_router, prefix="/api/emails", tags=["password and email operations"])
 app.include_router(dishes_router, prefix="/api/dishes", tags=["dishes operations"])
 
 

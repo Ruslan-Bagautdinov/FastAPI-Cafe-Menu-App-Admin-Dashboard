@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from decimal import Decimal
 
 # own import
 from app.database.models import (User,
@@ -18,14 +18,18 @@ from app.database.postgre_db import get_session
 from app.utils.security import get_current_user
 from app.database.crud import (create_dish,
                                update_dish,
-                               delete_dish, get_dishes_by_email
+                               delete_dish,
+                               get_dishes_by_email,
+                               get_email_for_dish,
+                               get_dish,
+                               format_extra_prices
                                )
 
 router = APIRouter()
 
 
-@router.post("/dishes/email/", response_model=list[DishResponse])
-async def get_dishes_by_email_handler(
+@router.post("/all_dishes_by_email/", response_model=list[DishResponse])
+async def get_all_dishes_by_email(
     email: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
@@ -41,7 +45,7 @@ async def get_dishes_by_email_handler(
                 photo=dish.photo,
                 description=dish.description,
                 price=dish.price,
-                extra=dish.extra
+                extra=format_extra_prices(dish.extra)
             ) for dish in dishes]
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
@@ -49,26 +53,17 @@ async def get_dishes_by_email_handler(
         raise HTTPException(status_code=403, detail="You do not have permission to view dishes for this email.")
 
 
-@router.post("/dishes/", response_model=DishResponse)
-async def get_dish_by_id_handler(
+@router.post("/dish_by_id/", response_model=DishResponse)
+async def get_dish_by_id(
         dish_id: int = Body(..., embed=True),
         db: AsyncSession = Depends(get_session),
         current_user: User = Depends(get_current_user)
 ):
-    # Join the necessary tables to fetch the email
-    query = (
-        select(Dish, User.email)
-        .join(Restaurant, Dish.restaurant_id == Restaurant.id)
-        .join(UserProfile, Restaurant.id == UserProfile.restaurant_id)
-        .join(User, UserProfile.user_id == User.id)
-        .where(Dish.id == dish_id)
-    )
-
-    result = await db.execute(query)
-    dish, email = result.first()
-
+    dish = await get_dish(db, dish_id)
     if not dish:
         raise HTTPException(status_code=404, detail="Dish not found")
+
+    email = await get_email_for_dish(db, dish_id)
 
     if current_user.role == 'superuser' or current_user.email == email:
         return DishResponse(
@@ -78,20 +73,19 @@ async def get_dish_by_id_handler(
             name=dish.name,
             photo=dish.photo,
             description=dish.description,
-            price=dish.price,
-            extra=dish.extra
+            price=Decimal(str(dish.price)).quantize(Decimal('0.01')),
+            extra=format_extra_prices(dish.extra)
         )
     else:
         raise HTTPException(status_code=403, detail="You do not have permission to view this dish.")
 
 
 @router.post("/create/", response_model=DishResponse)
-async def create_dish_handler(
+async def create_new_dish(
     dish: DishCreate,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-
     if current_user.role == 'superuser' or current_user.email == dish.email:
         try:
             created_dish = await create_dish(
@@ -112,7 +106,7 @@ async def create_dish_handler(
                 photo=created_dish.photo,
                 description=created_dish.description,
                 price=created_dish.price,
-                extra=created_dish.extra
+                extra=format_extra_prices(created_dish.extra)
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -121,7 +115,7 @@ async def create_dish_handler(
 
 
 @router.put("/update/", response_model=DishResponse)
-async def update_dish_handler(
+async def update_dish_route(
     dish: DishUpdate,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
@@ -130,7 +124,7 @@ async def update_dish_handler(
         try:
             updated_dish = await update_dish(
                 db,
-                dish_id=dish.dish_id,
+                dish.dish_id,  # Pass dish_id as a positional argument
                 name=dish.name,
                 description=dish.description,
                 price=dish.price,
@@ -145,17 +139,16 @@ async def update_dish_handler(
                 photo=updated_dish.photo,
                 description=updated_dish.description,
                 price=updated_dish.price,
-                extra=updated_dish.extra
+                extra=format_extra_prices(updated_dish.extra)
             )
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
-
     else:
         raise HTTPException(status_code=403, detail="You do not have permission to update a dish for this email.")
 
 
 @router.delete("/delete/")
-async def delete_dish_handler(
+async def delete_dish(
     dish: DishDelete,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)

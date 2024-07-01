@@ -1,6 +1,7 @@
 from pydantic import (BaseModel,
                       Field,
                       EmailStr,
+                      condecimal,
                       field_validator,
                       model_validator)
 from typing import Optional, Dict, Any
@@ -180,50 +181,50 @@ class DishResponse(BaseModel):
     name: str
     photo: Optional[str] = None
     description: str
-    price: float
+    price: condecimal(max_digits=10, decimal_places=2)  # Adjust max_digits and decimal_places as needed
     extra: Optional[Dict] = None
 
 
 class DishCreate(BaseModel):
     """
-        Schema for creating a new dish.
+    Schema for creating a new dish.
 
-        Attributes:
-            email (str): The email address of the user.
-            category_id (int): The ID of the category to which the dish belongs.
-            name (str): The name of the dish.
-            description (str): A description of the dish.
-            price (float): The price of the dish.
-            photo (Optional[str]): A URL or reference to a photo of the dish, if available.
-            extra (Optional[dict]): Additional information or attributes related to the dish, if any.
-        """
+    Attributes:
+        email (str): The email address of the user.
+        category_id (int): The ID of the category to which the dish belongs.
+        name (str): The name of the dish.
+        description (str): A description of the dish.
+        price (condecimal): The price of the dish.
+        photo (Optional[str]): A URL or reference to a photo of the dish, if available.
+        extra (Optional[dict]): Additional information or attributes related to the dish, if any.
+    """
     email: str
     category_id: int
     name: str
     description: str
-    price: float
+    price: condecimal(max_digits=10, decimal_places=2)  # Adjust max_digits and decimal_places as needed
     photo: Optional[str] = None
     extra: Optional[dict] = None
 
 
 class DishUpdate(BaseModel):
     """
-     Schema for updating an existing dish.
+    Schema for updating an existing dish.
 
-     Attributes:
-         email (str): The email address of the user.
-         dish_id (int): The ID of the dish to update.
-         name (Optional[str]): The updated name of the dish, if applicable.
-         description (Optional[str]): The updated description of the dish, if applicable.
-         price (Optional[float]): The updated price of the dish, if applicable.
-         photo (Optional[str]): The updated URL or reference to a photo of the dish, if applicable.
-         extra (Optional[dict]): Updated additional information or attributes related to the dish, if any.
-     """
+    Attributes:
+        email (str): The email address of the user.
+        dish_id (int): The ID of the dish to update.
+        name (Optional[str]): The updated name of the dish, if applicable.
+        description (Optional[str]): The updated description of the dish, if applicable.
+        price (Optional[condecimal]): The updated price of the dish, if applicable.
+        photo (Optional[str]): The updated URL or reference to a photo of the dish, if applicable.
+        extra (Optional[dict]): Updated additional information or attributes related to the dish, if any.
+    """
     email: str
     dish_id: int = Field(..., description="ID of the dish to update")
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[condecimal(max_digits=10, decimal_places=2)] = None  # Adjust max_digits and decimal_places as needed
     photo: Optional[str] = None
     extra: Optional[dict] = None
 

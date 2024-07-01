@@ -14,6 +14,17 @@ from app.database.models import (User,
                                  )
 
 
+def format_extra_prices(extra: Optional[Dict]) -> Optional[Dict]:
+    if extra is None:
+        return None
+    formatted_extra = {}
+    for key, value in extra.items():
+        description, price = value
+        formatted_price = Decimal(str(price)).quantize(Decimal('0.01'))
+        formatted_extra[key] = [description, formatted_price]
+    return formatted_extra
+
+
 async def get_superusers(db: AsyncSession) -> List[User]:
 
     result = await db.execute(select(User).where(User.role == 'superuser'))
@@ -80,6 +91,47 @@ async def get_next_dish_id(db: AsyncSession):
     result = await db.execute(select(func.max(Dish.id)))
     max_id = result.scalar()
     return max_id + 1 if max_id is not None else 1
+
+
+async def get_dishes_by_email(db: AsyncSession, email: str) -> List[Dish]:
+    profile = await get_user_profile_by_email(db, email)
+    if not profile:
+        raise ValueError("User profile not found")
+
+    if not profile.restaurant_id:
+        raise ValueError("Restaurant ID not found for the user profile")
+
+    result = await db.execute(select(Restaurant).where(Restaurant.id == profile.restaurant_id))
+    restaurant = result.scalars().first()
+    if not restaurant:
+        raise ValueError("Restaurant not found for the user profile")
+
+    result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
+    dishes = result.scalars().all()
+
+    # Format the price to two decimal places
+    for dish in dishes:
+        dish.price = Decimal(str(dish.price)).quantize(Decimal('0.01'))
+
+    return list(dishes)
+
+
+async def get_email_for_dish(db: AsyncSession, dish_id: int):
+    query = (
+        select(User.email)
+        .join(UserProfile, User.id == UserProfile.user_id)
+        .join(Restaurant, UserProfile.restaurant_id == Restaurant.id)
+        .join(Dish, Restaurant.id == Dish.restaurant_id)
+        .where(Dish.id == dish_id)
+    )
+    result = await db.execute(query)
+    return result.scalars().first()
+
+
+async def get_dish(db: AsyncSession, dish_id: int):
+    query = select(Dish).where(Dish.id == dish_id)
+    result = await db.execute(query)
+    return result.scalars().first()
 
 
 async def create_user_and_profile(db: AsyncSession,
@@ -212,6 +264,10 @@ async def create_dish(db: AsyncSession,
 
     next_id = await get_next_dish_id(db)
 
+    # Convert the price to Decimal and then back to float
+    price_decimal = Decimal(str(price)).quantize(Decimal('0.01'))
+    price_float = float(price_decimal)
+
     dish = Dish(
         id=next_id,
         restaurant_id=restaurant_id,
@@ -219,7 +275,7 @@ async def create_dish(db: AsyncSession,
         name=name,
         photo=photo,
         description=description,
-        price=price,
+        price=price_float,
         extra=extra
     )
     db.add(dish)
@@ -246,7 +302,8 @@ async def update_dish(db: AsyncSession,
     if description is not None:
         dish.description = description
     if price is not None:
-        dish.price = price
+        price_decimal = Decimal(str(price)).quantize(Decimal('0.01'))
+        dish.price = float(price_decimal)
     if photo is not None:
         dish.photo = photo
     if extra is not None:
@@ -268,18 +325,4 @@ async def delete_dish(db: AsyncSession,
     await db.commit()
 
 
-async def get_dishes_by_email(db: AsyncSession,
-                              email):
-
-    profile = await get_user_profile_by_email(db, email)
-    if not profile:
-        raise ValueError("User profile not found")
-
-    restaurant = profile.restaurant
-    if not restaurant:
-        raise ValueError("Restaurant not found for the user profile")
-
-    result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
-    dishes = result.scalars().all()
-    return dishes
 

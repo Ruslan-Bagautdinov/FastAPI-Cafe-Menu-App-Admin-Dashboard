@@ -81,6 +81,7 @@ async def get_next_dish_id(db: AsyncSession):
     max_id = result.scalar()
     return max_id + 1 if max_id is not None else 1
 
+
 async def create_user_and_profile(db: AsyncSession,
                                   email: str,
                                   hashed_password: str,

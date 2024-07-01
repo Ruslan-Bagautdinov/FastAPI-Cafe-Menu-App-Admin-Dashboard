@@ -85,3 +85,4 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
         raise credentials_exception
 
     return user
+

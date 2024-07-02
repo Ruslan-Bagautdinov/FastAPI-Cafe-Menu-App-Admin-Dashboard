@@ -8,7 +8,6 @@ from app.utils.security import get_password_hash, verify_password, create_access
 from app.database.models import User, UserProfile
 from app.database.schemas import UserRegister, UserCreate, UserLogin
 from app.database.crud import create_user_and_profile
-from app.utils.security import get_current_user
 
 router = APIRouter()
 
@@ -29,17 +28,7 @@ async def login(userlogin: UserLogin,
     Raises:
         HTTPException: 401 Unauthorized if the email or password is invalid.
         HTTPException: 403 Forbidden if the user role is not 'superuser' or 'restaurant'.
-        HTTPException: 400 Bad Request if the user is already authenticated.
     """
-    try:
-        current_user = await get_current_user(db=db)
-        if current_user:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="User is already authenticated. Please log out first.")
-    except HTTPException as e:
-        if e.status_code != status.HTTP_401_UNAUTHORIZED:
-            raise e
-
     user = await db.execute(select(User).filter(User.email == userlogin.email))
     user = user.scalars().first()
 
@@ -72,19 +61,7 @@ async def register_user(user_register: UserRegister,
 
     Returns:
         dict: A dictionary containing a success message, user email, and user ID.
-
-    Raises:
-        HTTPException: 400 Bad Request if the user is already authenticated.
     """
-    try:
-        current_user = await get_current_user(db=db)
-        if current_user:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="User is already authenticated. Please log out first.")
-    except HTTPException as e:
-        if e.status_code != status.HTTP_401_UNAUTHORIZED:
-            raise e
-
     hashed_password = get_password_hash(user_register.password)
 
     db_user = await create_user_and_profile(db, user_register.email, hashed_password, "restaurant")
@@ -92,21 +69,3 @@ async def register_user(user_register: UserRegister,
     return {"message": f"{db_user.role.capitalize()} successfully registered",
             "email": str(db_user.email),
             "user_id": str(db_user.id)}
-
-
-@router.post("/logout", description="Doesn't do anything, just returns a message. "
-                                    "Use your own frontend logic to remove the access token from the headers.")
-async def logout(current_user: User = Depends(get_current_user)):
-    """
-    Doesn't do anything, just returns a message.
-    Use your own frontend logic to remove the access token from the headers.
-
-    Args:
-        current_user (User): The current authenticated user, obtained from the dependency.
-
-    Returns:
-        dict: A dictionary containing a success message.
-    """
-
-    return {"message": f"{current_user.role.capitalize()} {current_user.email} successfully logged out"}
-

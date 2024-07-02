@@ -45,3 +45,4 @@ app.include_router(dishes_router, prefix="/api/dishes", tags=["dishes operations
 @app.get("/")
 async def root():
     return RedirectResponse(url='/docs')
+

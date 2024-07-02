@@ -1,6 +1,14 @@
-from fastapi import HTTPException, Depends, status, Security
+from fastapi import (HTTPException,
+                     Request,
+                     Depends,
+                     status,
+                     Security
+                     )
 
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import (OAuth2PasswordBearer,
+                              HTTPBearer,
+                              HTTPAuthorizationCredentials
+                              )
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -9,10 +17,13 @@ from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta
 
-# own import
+# Own import
 from app.database.postgre_db import get_session
 from app.database.models import User
-from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.config import (SECRET_KEY,
+                        ALGORITHM,
+                        ACCESS_TOKEN_EXPIRE_MINUTES
+                        )
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -86,3 +97,23 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
 
     return user
 
+
+async def check_existing_token(request: Request, db: AsyncSession = Depends(get_session)):
+    authorization: str = request.headers.get("Authorization")
+    if authorization:
+        try:
+            scheme, credentials = authorization.split()
+            if scheme.lower() == "bearer":
+                token = credentials
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                email: str = payload.get("sub")
+                if email is None:
+                    raise HTTPException(status_code=403, detail="Invalid authentication credentials")
+                user = await db.execute(select(User).filter(User.email == email))
+                user = user.scalars().first()
+                if user is None:
+                    raise HTTPException(status_code=403, detail="Invalid authentication credentials")
+                return user
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=403, detail="Invalid authentication credentials")
+    return None

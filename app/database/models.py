@@ -45,6 +45,7 @@ class UserProfile(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), unique=True)
     restaurant_id: Mapped[int] = mapped_column(ForeignKey('restaurants.id', ondelete='CASCADE'), nullable=True)
     restaurant_name: Mapped[str] = mapped_column(index=True, nullable=True)
+    restaurant_reviews: Mapped[str] = mapped_column(index=True, nullable=True)
     restaurant_photo: Mapped[str] = mapped_column(index=True, nullable=True)
     telegram: Mapped[str] = mapped_column(index=True, nullable=True)
     rating: Mapped[Decimal] = mapped_column(Numeric(2, 1), nullable=True)

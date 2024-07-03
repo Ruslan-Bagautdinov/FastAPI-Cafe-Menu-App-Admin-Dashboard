@@ -200,9 +200,6 @@ async def change_password(request: ChangePasswordRequest,
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    if not verify_password(request.old_password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect old password")
-
     hashed_new_password = get_password_hash(request.new_password)
     user.hashed_password = hashed_new_password
     db.add(user)
@@ -210,3 +207,46 @@ async def change_password(request: ChangePasswordRequest,
     await db.refresh(user)
 
     return {"message": "Password changed successfully"}
+
+
+
+# @router.post("/change_password", description="Change user password")
+# async def change_password(request: ChangePasswordRequest,
+#                           current_user: User = Depends(get_current_user),
+#                           db: AsyncSession = Depends(get_session)):
+#     """
+#     Change the password of a user. Only the user themselves or a superuser can change the password.
+#
+#     Args:
+#         request (ChangePasswordRequest): The request containing the email, old password, and new password.
+#         current_user (User): The current authenticated user, obtained from the dependency.
+#         db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
+#
+#     Returns:
+#         dict: A message indicating the password was changed successfully.
+#
+#     Raises:
+#         HTTPException: 403 Forbidden if the current user is not authorized to change the password.
+#         HTTPException: 404 Not Found if the user is not found.
+#         HTTPException: 400 Bad Request if the old password is incorrect or if the new password is the same as the old password.
+#     """
+#     if current_user.email != request.email and current_user.role != 'superuser':
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to change this password")
+#
+#     query = select(User).filter(User.email == request.email)
+#     result = await db.execute(query)
+#     user = result.scalars().first()
+#
+#     if not user:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+#
+#     if not verify_password(request.old_password, user.hashed_password):
+#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect old password")
+#
+#     hashed_new_password = get_password_hash(request.new_password)
+#     user.hashed_password = hashed_new_password
+#     db.add(user)
+#     await db.commit()
+#     await db.refresh(user)
+#
+#     return {"message": "Password changed successfully"}

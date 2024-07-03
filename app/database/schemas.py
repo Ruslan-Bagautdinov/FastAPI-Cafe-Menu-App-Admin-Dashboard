@@ -89,6 +89,7 @@ class UserProfileResponse(BaseModel):
         user_id (uuid.UUID): The unique identifier of the user associated with this profile.
         restaurant_id (Optional[int]): The ID of the restaurant associated with the user profile, if applicable.
         restaurant_name (Optional[str]): The name of the restaurant associated with the user profile, if applicable.
+        restaurant_reviews (Optional[str]): The link for reviews of the restaurant, if available.
         restaurant_photo (Optional[str]): A URL or reference to a photo of the restaurant, if available.
         telegram (Optional[str]): The Telegram handle of the user or restaurant, if provided.
         rating (Optional[str]): The rating of the restaurant, if available.
@@ -99,6 +100,7 @@ class UserProfileResponse(BaseModel):
     user_id: uuid.UUID
     restaurant_id: Optional[int]
     restaurant_name: Optional[str]
+    restaurant_reviews: Optional[str]
     restaurant_photo: Optional[str]
     telegram: Optional[str]
     rating: Optional[Decimal]
@@ -129,6 +131,7 @@ class UserProfileUpdate(BaseModel):
 
     Attributes:
         restaurant_name (Optional[str]): The name of the restaurant associated with the user profile, if applicable.
+        restaurant_reviews (Optional[str]): The reviews of the restaurant, if available.
         restaurant_photo (Optional[str]): A URL or reference to a photo of the restaurant, if available.
         telegram (Optional[str]): The Telegram handle of the user or restaurant, if provided.
         rating (Optional[str]): The rating of the restaurant, if available.
@@ -136,6 +139,7 @@ class UserProfileUpdate(BaseModel):
         tables_amount (Optional[int]): The number of tables in the restaurant, if applicable.
     """
     restaurant_name: Optional[str] = None
+    restaurant_reviews: Optional[str] = None
     restaurant_photo: Optional[str] = None
     telegram: Optional[str] = None
     rating: Optional[Decimal] = None
@@ -162,17 +166,23 @@ class PasswordResetRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
+
     email: str
-    old_password: str
     new_password: str
 
-    @model_validator(mode='before')
-    def check_passwords_not_equal(cls, values):
-        old_password = values.get('old_password')
-        new_password = values.get('new_password')
-        if old_password == new_password:
-            raise ValueError('New password must be different from the old password')
-        return values
+
+# class ChangePasswordRequest(BaseModel):
+#     email: str
+#     old_password: str
+#     new_password: str
+#
+#     @model_validator(mode='before')
+#     def check_passwords_not_equal(cls, values):
+#         old_password = values.get('old_password')
+#         new_password = values.get('new_password')
+#         if old_password == new_password:
+#             raise ValueError('New password must be different from the old password')
+#         return values
 
 
 class EmailRequest(BaseModel):

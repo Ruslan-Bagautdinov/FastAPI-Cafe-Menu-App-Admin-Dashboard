@@ -1,8 +1,8 @@
 .venv/
 .idea/
 .git/
+alembic/
+alembic.ini
 .stuff/
 **/__pycache__/
 .env
-ЗАДАЧИ.txt
-WORK_DATABASE_URL=postgresql+asyncp.txt

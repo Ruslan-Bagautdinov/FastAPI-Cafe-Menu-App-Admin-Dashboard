@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List,  Optional
 from decimal import Decimal
 import uuid
+import os
+import shutil
 
 from app.database.models import (User,
                                  UserProfile,
@@ -12,6 +14,9 @@ from app.database.models import (User,
                                  Category,
                                  Dish
                                  )
+
+from app.config import MAIN_PHOTO_FOLDER
+
 
 
 def format_extra_prices(extra: Optional[Dict]) -> Optional[Dict]:
@@ -33,7 +38,6 @@ async def get_superusers(db: AsyncSession) -> List[User]:
 
 
 async def get_all_user_profiles(db: AsyncSession) -> Dict[uuid.UUID, Dict[str, Any]]:
-
     result = await db.execute(select(UserProfile).join(User))
     profiles = result.scalars().all()
 
@@ -45,6 +49,7 @@ async def get_all_user_profiles(db: AsyncSession) -> Dict[uuid.UUID, Dict[str, A
             "user_id": profile.user_id,
             "restaurant_id": profile.restaurant_id,
             "restaurant_name": profile.restaurant_name,
+            "restaurant_reviews": profile.restaurant_reviews,
             "restaurant_photo": profile.restaurant_photo,
             "telegram": profile.telegram,
             "rating": profile.rating,
@@ -56,8 +61,7 @@ async def get_all_user_profiles(db: AsyncSession) -> Dict[uuid.UUID, Dict[str, A
     return profile_dict
 
 
-async def get_user_profile_by_email(db: AsyncSession,
-                                    email: str) -> Optional[UserProfile]:
+async def get_user_profile_by_email(db: AsyncSession, email: str) -> Optional[UserProfile]:
 
     result = await db.execute(
         select(UserProfile).join(User).where(User.email == email)
@@ -145,7 +149,6 @@ async def create_user_and_profile(db: AsyncSession,
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Set approved to True if the role is 'superuser'
     approved = role == 'superuser'
 
     db_user = User(email=email, hashed_password=hashed_password, role=role, approved=approved)
@@ -154,35 +157,35 @@ async def create_user_and_profile(db: AsyncSession,
     await db.refresh(db_user)
 
     if role == 'restaurant':
-        db_profile = UserProfile(user_id=db_user.id, tables_amount=0)  # Default tables_amount value
+        db_profile = UserProfile(user_id=db_user.id, tables_amount=0)
         db.add(db_profile)
         await db.commit()
         await db.refresh(db_profile)
 
-        # Create a Restaurant with default values
         db_restaurant = Restaurant(
             name="Default Restaurant Name",
             rating=Decimal('0.0'),
             currency="USD",
-            tables_amount=0  # Default tables_amount value
+            tables_amount=0
         )
         db.add(db_restaurant)
         await db.commit()
         await db.refresh(db_restaurant)
 
-        # Update the UserProfile with the newly created Restaurant's ID
         db_profile.restaurant_id = db_restaurant.id
         db.add(db_profile)
         await db.commit()
         await db.refresh(db_profile)
 
+        # Create a folder for the restaurant
+        restaurant_folder = os.path.join(MAIN_PHOTO_FOLDER, str(db_restaurant.id))
+        if not os.path.exists(restaurant_folder):
+            os.makedirs(restaurant_folder)
+
     return db_user
 
 
-async def update_user_profile_by_email(db: AsyncSession,
-                                       email: str,
-                                       profile_update: dict):
-
+async def update_user_profile_by_email(db: AsyncSession, email: str, profile_update: dict):
     query = select(UserProfile).join(User).filter(User.email == email)
     result = await db.execute(query)
     profile = result.scalars().first()
@@ -201,6 +204,8 @@ async def update_user_profile_by_email(db: AsyncSession,
         if restaurant is not None:
             if profile_update.get('restaurant_name') is not None:
                 restaurant.name = profile_update['restaurant_name']
+            if profile_update.get('restaurant_reviews') is not None:
+                restaurant.reviews = profile_update['restaurant_reviews']
             if profile_update.get('restaurant_photo') is not None:
                 restaurant.photo = profile_update['restaurant_photo']
             if profile_update.get('rating') is not None:
@@ -230,6 +235,11 @@ async def delete_user_and_profile(db: AsyncSession,
     if db_user.profile and db_user.profile.restaurant_id:
         restaurant_query = delete(Restaurant).where(Restaurant.id == db_user.profile.restaurant_id)
         await db.execute(restaurant_query)
+
+        # Delete the restaurant folder
+        restaurant_folder = os.path.join(MAIN_PHOTO_FOLDER, str(db_user.profile.restaurant_id))
+        if os.path.exists(restaurant_folder):
+            shutil.rmtree(restaurant_folder)
 
     user_query = delete(User).where(User.email == email)
     await db.execute(user_query)

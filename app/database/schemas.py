@@ -216,6 +216,7 @@ class DishCreate(BaseModel):
 
     Attributes:
         email (str): The email address of the user.
+        restaurant_id (int): The ID of the restaurant to which the dish belongs.
         category_id (int): The ID of the category to which the dish belongs.
         name (str): The name of the dish.
         description (str): A description of the dish.
@@ -224,6 +225,7 @@ class DishCreate(BaseModel):
         extra (Optional[dict]): Additional information or attributes related to the dish, if any.
     """
     email: str
+    restaurant_id: int = Field(..., description="ID of the restaurant to which the dish belongs")
     category_id: int
     name: str
     description: str
@@ -239,6 +241,7 @@ class DishUpdate(BaseModel):
     Attributes:
         email (str): The email address of the user.
         dish_id (int): The ID of the dish to update.
+        restaurant_id (Optional[int]): The ID of the restaurant to which the dish belongs, if applicable.
         name (Optional[str]): The updated name of the dish, if applicable.
         description (Optional[str]): The updated description of the dish, if applicable.
         price (Optional[condecimal]): The updated price of the dish, if applicable.
@@ -247,6 +250,7 @@ class DishUpdate(BaseModel):
     """
     email: str
     dish_id: int = Field(..., description="ID of the dish to update")
+    restaurant_id: Optional[int] = None
     name: Optional[str] = None
     description: Optional[str] = None
     price: Optional[condecimal(max_digits=10, decimal_places=2)] = None  # Adjust max_digits and decimal_places as needed

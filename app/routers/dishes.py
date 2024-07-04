@@ -128,9 +128,20 @@ async def create_new_dish(
     """
     if current_user.role == 'superuser' or current_user.email == dish.email:
         try:
+            # For superusers, use the provided restaurant_id
+            if current_user.role == 'superuser':
+                restaurant_id = dish.restaurant_id
+            else:
+                # For restaurant role, fetch restaurant_id from user profile
+                profile = await get_user_profile_by_email(db, current_user.email)
+                if not profile or not profile.restaurant_id:
+                    raise HTTPException(status_code=400, detail="Restaurant ID not found for the user profile.")
+                restaurant_id = profile.restaurant_id
+
             created_dish = await create_dish(
                 db,
                 email=dish.email,
+                restaurant_id=restaurant_id,
                 category_id=dish.category_id,
                 name=dish.name,
                 description=dish.description,
@@ -154,7 +165,7 @@ async def create_new_dish(
         raise HTTPException(status_code=403, detail="You do not have permission to create a dish for this email.")
 
 
-@router.put("/update/", response_model=DishResponse, description="Update an existing dish.")
+@router.patch("/update/", response_model=DishResponse, description="Update an existing dish.")
 async def update_dish_route(
     dish: DishUpdate,
     db: AsyncSession = Depends(get_session),
@@ -180,6 +191,8 @@ async def update_dish_route(
             updated_dish = await update_dish(
                 db,
                 dish.dish_id,  # Pass dish_id as a positional argument
+                current_user=current_user,  # Pass current_user to check role
+                restaurant_id=dish.restaurant_id,
                 name=dish.name,
                 description=dish.description,
                 price=dish.price,

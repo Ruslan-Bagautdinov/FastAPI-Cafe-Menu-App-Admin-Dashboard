@@ -18,7 +18,6 @@ from app.database.models import (User,
 from app.config import MAIN_PHOTO_FOLDER
 
 
-
 def format_extra_prices(extra: Optional[Dict]) -> Optional[Dict]:
     if extra is None:
         return None
@@ -249,20 +248,13 @@ async def delete_user_and_profile(db: AsyncSession,
 
 async def create_dish(db: AsyncSession,
                       email: str,
+                      restaurant_id: int,  # Add restaurant_id as a parameter
                       category_id: int,
                       name: str,
                       description: str,
                       price: float,
                       photo: str = None,
                       extra: dict = None):
-
-    profile = await get_user_profile_by_email(db, email)
-    if not profile:
-        raise ValueError("User profile not found")
-
-    restaurant_id = profile.restaurant_id
-    if not restaurant_id:
-        raise ValueError("Restaurant not found for the user profile")
 
     restaurant = await get_restaurant_by_id(db, restaurant_id)
     if not restaurant:
@@ -296,6 +288,8 @@ async def create_dish(db: AsyncSession,
 
 async def update_dish(db: AsyncSession,
                       dish_id,
+                      current_user: User,
+                      restaurant_id=None,
                       name=None,
                       description=None,
                       price=None,
@@ -319,8 +313,13 @@ async def update_dish(db: AsyncSession,
     if extra is not None:
         dish.extra = extra
 
+    # Only allow updating restaurant_id if the user is a superuser
+    if restaurant_id is not None and current_user.role == 'superuser':
+        dish.restaurant_id = restaurant_id
+
     await db.commit()
     return dish
+
 
 
 async def delete_dish(db: AsyncSession,

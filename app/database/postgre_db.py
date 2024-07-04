@@ -38,4 +38,4 @@ async def get_session() -> AsyncSession:
     async with async_session() as session:
         yield session
 
-print(DATABASE_URL)
+logger.info(DATABASE_URL)

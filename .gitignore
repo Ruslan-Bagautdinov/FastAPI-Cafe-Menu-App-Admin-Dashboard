@@ -1,6 +1,7 @@
 .venv/
 .idea/
 .git/
+/img/*
 alembic/
 alembic.ini
 .stuff/

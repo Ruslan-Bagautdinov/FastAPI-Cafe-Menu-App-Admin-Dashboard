@@ -14,6 +14,8 @@ from app.routers.users import router as users_router
 from app.routers.restaurants import router as restaurants_router
 from app.routers.emails import router as emails_router
 from app.routers.dishes import router as dishes_router
+from app.routers.image import router as image_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,7 +41,7 @@ app.include_router(users_router, prefix="/api/users", tags=["superuser operation
 app.include_router(restaurants_router, prefix="/api/restaurants", tags=["restaurant operations"])
 app.include_router(emails_router, prefix="/api/emails", tags=["password and email operations"])
 app.include_router(dishes_router, prefix="/api/dishes", tags=["dishes operations"])
-
+app.include_router(image_router, prefix="/api/images", tags=["image operations"])
 
 
 @app.get("/")

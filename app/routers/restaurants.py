@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+from decimal import Decimal, InvalidOperation
 
 # Own imports
 from app.database.postgre_db import get_session
@@ -11,9 +12,9 @@ from app.database.schemas import (RestaurantsResponse,
                                   UserProfileResponse,
                                   UserProfileUpdate)
 
-from app.database.crud import (get_all_user_profiles,
-                               get_user_profile_by_email,
-                               update_user_profile_by_email)
+from app.database.crud import (crud_get_all_user_profiles,
+                               crud_get_user_profile_by_email,
+                               crud_update_user_profile_by_email)
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ router = APIRouter()
 async def all_restaurants(current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_session)):
     """
-    Retrieve all restaurants for superusers.
+    Retrieve all restaurants for superusers. (Only for superusers).
 
     Args:
         current_user (User): The current authenticated user, obtained from the dependency.
@@ -37,7 +38,7 @@ async def all_restaurants(current_user: User = Depends(get_current_user),
     if current_user.role != 'superuser':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only superusers can access this endpoint")
 
-    restaurants = await get_all_user_profiles(db)
+    restaurants = await crud_get_all_user_profiles(db)
 
     return {"root": restaurants}
 
@@ -61,7 +62,7 @@ async def get_profile_by_email(email: str,
         HTTPException: 403 Forbidden if the current user does not have permission to access this profile.
     """
     if current_user.role == 'superuser' or current_user.email == email:
-        profile = await get_user_profile_by_email(db, email)
+        profile = await crud_get_user_profile_by_email(db, email)
         if profile:
             return UserProfileResponse(
                 id=profile.id,
@@ -81,7 +82,8 @@ async def get_profile_by_email(email: str,
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
 
-@router.put("/update_restaurant", response_model=Optional[UserProfileResponse], description="Update a user profile by email.")
+@router.patch("/update_restaurant", response_model=Optional[UserProfileResponse],
+              description="Update a user profile by email.")
 async def update_profile_by_email(email: str,
                                   profile_update: UserProfileUpdate,
                                   current_user: User = Depends(get_current_user),
@@ -101,9 +103,21 @@ async def update_profile_by_email(email: str,
     Raises:
         HTTPException: 403 Forbidden if the current user does not have permission to update this profile.
         HTTPException: 404 Not Found if the profile is not found.
+        HTTPException: 400 Bad Request if the rating value is out of range.
     """
     if current_user.role == 'superuser' or current_user.email == email:
-        profile = await update_user_profile_by_email(db, email, profile_update.dict(exclude_unset=True))
+        profile_data = profile_update.dict(exclude_unset=True)
+
+        # Validate the rating value
+        if 'rating' in profile_data:
+            try:
+                rating = Decimal(profile_data['rating'])
+                if rating < Decimal('0.0') or rating > Decimal('9.9'):
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rating value out of range")
+            except InvalidOperation:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid rating value")
+
+        profile = await crud_update_user_profile_by_email(db, email, profile_data)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 

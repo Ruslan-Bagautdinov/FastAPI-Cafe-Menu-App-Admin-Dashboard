@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.database.postgre_db import get_session
 from app.database.models import User, UserProfile
 from app.database.schemas import UserRegister, UserCreate, UserLogin
-from app.database.crud import create_user_and_profile
+from app.database.crud import crud_create_user_and_profile
 from app.utils.security import (get_password_hash,
                                 verify_password,
                                 create_access_token,
@@ -151,7 +151,7 @@ async def register_user(user_register: UserRegister,
 
     hashed_password = get_password_hash(user_register.password)
 
-    db_user = await create_user_and_profile(db, user_register.email, hashed_password, "restaurant")
+    db_user = await crud_create_user_and_profile(db, user_register.email, hashed_password, "restaurant")
 
     return {"message": f"{db_user.role.capitalize()} successfully registered",
             "email": str(db_user.email),

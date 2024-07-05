@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import (AsyncSession,
 from sqlalchemy.orm import declarative_base
 
 import logging
+import asyncpg
 
 from app.config import HOME_DB, WORK_DATABASE_URL, LOCAL_DATABASE_URL
 

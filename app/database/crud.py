@@ -29,14 +29,14 @@ def format_extra_prices(extra: Optional[Dict]) -> Optional[Dict]:
     return formatted_extra
 
 
-async def get_superusers(db: AsyncSession) -> List[User]:
+async def crud_get_superusers(db: AsyncSession) -> List[User]:
 
     result = await db.execute(select(User).where(User.role == 'superuser'))
     superusers = result.scalars().all()
     return list(superusers)
 
 
-async def get_all_user_profiles(db: AsyncSession) -> Dict[uuid.UUID, Dict[str, Any]]:
+async def crud_get_all_user_profiles(db: AsyncSession) -> Dict[uuid.UUID, Dict[str, Any]]:
     result = await db.execute(select(UserProfile).join(User))
     profiles = result.scalars().all()
 
@@ -60,7 +60,7 @@ async def get_all_user_profiles(db: AsyncSession) -> Dict[uuid.UUID, Dict[str, A
     return profile_dict
 
 
-async def get_user_profile_by_email(db: AsyncSession, email: str) -> Optional[UserProfile]:
+async def crud_get_user_profile_by_email(db: AsyncSession, email: str) -> Optional[UserProfile]:
 
     result = await db.execute(
         select(UserProfile).join(User).where(User.email == email)
@@ -69,7 +69,7 @@ async def get_user_profile_by_email(db: AsyncSession, email: str) -> Optional[Us
     return profile
 
 
-async def get_restaurant_by_id(db: AsyncSession, restaurant_id: int):
+async def crud_get_restaurant_by_id(db: AsyncSession, restaurant_id: int):
 
     result = await db.execute(
         select(Restaurant).where(Restaurant.id == restaurant_id)
@@ -77,27 +77,27 @@ async def get_restaurant_by_id(db: AsyncSession, restaurant_id: int):
     return result.scalars().first()
 
 
-async def get_category_by_id(db: AsyncSession,
+async def crud_get_category_by_id(db: AsyncSession,
                              category_id):
 
     result = await db.execute(select(Category).where(Category.id == category_id))
     return result.scalars().first()
 
 
-async def get_all_categories(db: AsyncSession):
+async def crud_get_all_categories(db: AsyncSession):
 
     result = await db.execute(select(Category))
     return result.scalars().all()
 
 
-async def get_next_dish_id(db: AsyncSession):
+async def crud_get_next_dish_id(db: AsyncSession):
     result = await db.execute(select(func.max(Dish.id)))
     max_id = result.scalar()
     return max_id + 1 if max_id is not None else 1
 
 
-async def get_dishes_by_email(db: AsyncSession, email: str) -> List[Dish]:
-    profile = await get_user_profile_by_email(db, email)
+async def crud_get_dishes_by_email(db: AsyncSession, email: str) -> List[Dish]:
+    profile = await crud_get_user_profile_by_email(db, email)
     if not profile:
         raise ValueError("User profile not found")
 
@@ -119,7 +119,7 @@ async def get_dishes_by_email(db: AsyncSession, email: str) -> List[Dish]:
     return list(dishes)
 
 
-async def get_email_for_dish(db: AsyncSession, dish_id: int):
+async def crud_get_email_for_dish(db: AsyncSession, dish_id: int):
     query = (
         select(User.email)
         .join(UserProfile, User.id == UserProfile.user_id)
@@ -131,13 +131,13 @@ async def get_email_for_dish(db: AsyncSession, dish_id: int):
     return result.scalars().first()
 
 
-async def get_dish(db: AsyncSession, dish_id: int):
+async def crud_get_dish(db: AsyncSession, dish_id: int):
     query = select(Dish).where(Dish.id == dish_id)
     result = await db.execute(query)
     return result.scalars().first()
 
 
-async def create_user_and_profile(db: AsyncSession,
+async def crud_create_user_and_profile(db: AsyncSession,
                                   email: str,
                                   hashed_password: str,
                                   role: str) -> User:
@@ -184,7 +184,7 @@ async def create_user_and_profile(db: AsyncSession,
     return db_user
 
 
-async def update_user_profile_by_email(db: AsyncSession, email: str, profile_update: dict):
+async def crud_update_user_profile_by_email(db: AsyncSession, email: str, profile_update: dict):
     query = select(UserProfile).join(User).filter(User.email == email)
     result = await db.execute(query)
     profile = result.scalars().first()
@@ -221,7 +221,7 @@ async def update_user_profile_by_email(db: AsyncSession, email: str, profile_upd
     return profile
 
 
-async def delete_user_and_profile(db: AsyncSession,
+async def crud_delete_user_and_profile(db: AsyncSession,
                                   email: str):
 
     query = select(User).filter(User.email == email).options(selectinload(User.profile).selectinload(UserProfile.restaurant))
@@ -246,7 +246,7 @@ async def delete_user_and_profile(db: AsyncSession,
     await db.commit()
 
 
-async def create_dish(db: AsyncSession,
+async def crud_create_dish(db: AsyncSession,
                       email: str,
                       restaurant_id: int,  # Add restaurant_id as a parameter
                       category_id: int,
@@ -256,15 +256,15 @@ async def create_dish(db: AsyncSession,
                       photo: str = None,
                       extra: dict = None):
 
-    restaurant = await get_restaurant_by_id(db, restaurant_id)
+    restaurant = await crud_get_restaurant_by_id(db, restaurant_id)
     if not restaurant:
         raise ValueError("Restaurant not found")
 
-    category = await get_category_by_id(db, category_id)
+    category = await crud_get_category_by_id(db, category_id)
     if not category:
         raise ValueError("Category not found")
 
-    next_id = await get_next_dish_id(db)
+    next_id = await crud_get_next_dish_id(db)
 
     # Convert the price to Decimal and then back to float
     price_decimal = Decimal(str(price)).quantize(Decimal('0.01'))
@@ -286,7 +286,7 @@ async def create_dish(db: AsyncSession,
     return dish
 
 
-async def update_dish(db: AsyncSession,
+async def crud_update_dish(db: AsyncSession,
                       dish_id,
                       current_user: User,
                       restaurant_id=None,
@@ -321,9 +321,8 @@ async def update_dish(db: AsyncSession,
     return dish
 
 
-
-async def delete_dish(db: AsyncSession,
-                      dish_id):
+async def crud_delete_dish(db: AsyncSession,
+                            dish_id: int):
 
     result = await db.execute(select(Dish).where(Dish.id == dish_id))
     dish = result.scalars().first()
@@ -332,6 +331,3 @@ async def delete_dish(db: AsyncSession,
 
     await db.delete(dish)
     await db.commit()
-
-
-

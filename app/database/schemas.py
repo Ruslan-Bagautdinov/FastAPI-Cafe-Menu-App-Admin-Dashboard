@@ -268,3 +268,4 @@ class DishDelete(BaseModel):
     """
     email: str
     dish_id: int = Field(..., description="ID of the dish to delete")
+

@@ -11,13 +11,14 @@ from app.database.schemas import (DishResponse,
                                   )
 from app.database.postgre_db import get_session
 from app.utils.security import get_current_user
-from app.database.crud import (create_dish,
-                               update_dish,
-                               delete_dish,
-                               get_dishes_by_email,
-                               get_email_for_dish,
-                               get_dish,
-                               format_extra_prices
+from app.database.crud import (crud_create_dish,
+                               crud_update_dish,
+                               crud_delete_dish,
+                               crud_get_dishes_by_email,
+                               crud_get_email_for_dish,
+                               crud_get_dish,
+                               format_extra_prices,
+                               crud_get_user_profile_by_email
                                )
 
 router = APIRouter()
@@ -46,7 +47,7 @@ async def get_all_dishes_by_email(
     """
     if current_user.role == 'superuser' or current_user.email == email:
         try:
-            dishes = await get_dishes_by_email(db, email)
+            dishes = await crud_get_dishes_by_email(db, email)
             return [DishResponse(
                 id=dish.id,
                 restaurant_id=dish.restaurant_id,
@@ -84,11 +85,11 @@ async def get_dish_by_id(
         HTTPException: 403 Forbidden if the current user does not have permission to view this dish.
         HTTPException: 404 Not Found if the dish is not found.
     """
-    dish = await get_dish(db, dish_id)
+    dish = await crud_get_dish(db, dish_id)
     if not dish:
         raise HTTPException(status_code=404, detail="Dish not found")
 
-    email = await get_email_for_dish(db, dish_id)
+    email = await crud_get_email_for_dish(db, dish_id)
 
     if current_user.role == 'superuser' or current_user.email == email:
         return DishResponse(
@@ -133,12 +134,12 @@ async def create_new_dish(
                 restaurant_id = dish.restaurant_id
             else:
                 # For restaurant role, fetch restaurant_id from user profile
-                profile = await get_user_profile_by_email(db, current_user.email)
+                profile = await crud_get_user_profile_by_email(db, current_user.email)
                 if not profile or not profile.restaurant_id:
                     raise HTTPException(status_code=400, detail="Restaurant ID not found for the user profile.")
                 restaurant_id = profile.restaurant_id
 
-            created_dish = await create_dish(
+            created_dish = await crud_create_dish(
                 db,
                 email=dish.email,
                 restaurant_id=restaurant_id,
@@ -188,7 +189,7 @@ async def update_dish_route(
     """
     if current_user.role == 'superuser' or current_user.email == dish.email:
         try:
-            updated_dish = await update_dish(
+            updated_dish = await crud_update_dish(
                 db,
                 dish.dish_id,  # Pass dish_id as a positional argument
                 current_user=current_user,  # Pass current_user to check role
@@ -238,7 +239,7 @@ async def delete_dish(
     """
     if current_user.role == 'superuser' or current_user.email == dish.email:
         try:
-            await delete_dish(db, dish_id=dish.dish_id)
+            await crud_delete_dish(db, dish_id=dish.dish_id)
             return {"message": f"Dish {dish.dish_id} deleted successfully"}
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))

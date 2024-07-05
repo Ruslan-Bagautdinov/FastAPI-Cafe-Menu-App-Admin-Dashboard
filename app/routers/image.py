@@ -88,3 +88,4 @@ async def upload_file(file: UploadFile = File(...), restaurant_id: str = None, f
 
     await save_upload_file(file, destination)
     return {"filename": filename, "destination": destination}
+

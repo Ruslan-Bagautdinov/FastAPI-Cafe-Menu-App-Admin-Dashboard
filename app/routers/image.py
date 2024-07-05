@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, File, UploadFile
 from fastapi.responses import StreamingResponse
 import os
 import io
 
-from app.utils.functions import read_photo
+from app.utils.functions import read_photo, save_upload_file
 from app.config import MIME_TYPES
 from app.config import MAIN_PHOTO_FOLDER
 
 router = APIRouter()
 
 default_avatar_path = os.path.join(MAIN_PHOTO_FOLDER, 'default_cafe_04.jpeg')
+
 
 @router.get("/")
 async def get_image(
@@ -64,3 +65,26 @@ async def get_image(
     media_type = MIME_TYPES.get(file_extension, "application/octet-stream")
 
     return StreamingResponse(io.BytesIO(photo_bytes), media_type=media_type)
+
+
+@router.post("/upload/")
+async def upload_file(file: UploadFile = File(...), restaurant_id: str = None, filename: str = None):
+
+    ALLOWED_EXTENSIONS = {"jpeg", "jpg", "png", "gif", "bmp", "webp"}
+
+    if not restaurant_id:
+        raise HTTPException(status_code=400, detail="Restaurant ID is required.")
+    if not filename:
+        raise HTTPException(status_code=400, detail="Filename is required.")
+
+    # Check if the file extension is in the allowed list
+    file_extension = filename.split('.')[-1].lower()
+    if file_extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"File type '{file_extension}' is not allowed. Allowed types are {', '.join(ALLOWED_EXTENSIONS)}.")
+
+    destination = os.path.join(MAIN_PHOTO_FOLDER, restaurant_id, filename)
+
+    os.makedirs(os.path.dirname(destination), exist_ok=True)
+
+    await save_upload_file(file, destination)
+    return {"filename": filename, "destination": destination}

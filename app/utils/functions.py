@@ -1,5 +1,9 @@
-import aiofiles
 import os
+import tempfile
+from PIL import Image
+import aiofiles
+from fastapi import UploadFile
+
 
 async def read_photo(photo_path):
     """
@@ -46,3 +50,31 @@ async def read_photo(photo_path):
     except Exception as e:
         print(f"Error reading photo {photo_path}: {e}")
         return None
+
+
+async def save_upload_file(upload_file: UploadFile, destination: str):
+    if upload_file is None:
+        print("No file provided.")
+        return
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+        temp_filename = temp_file.name
+        async with aiofiles.open(temp_filename, 'wb') as out_file:
+            while content := await upload_file.read(1024):  # Read file in chunks
+                await out_file.write(content)
+
+    try:
+        img = Image.open(temp_filename)
+        width, height = img.size
+
+        if max(width, height) > 1024:
+            aspect_ratio = min(1024 / width, 1024 / height)
+            new_size = (int(width * aspect_ratio), int(height * aspect_ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+        img.save(destination)
+    except Exception as e:
+        print(f"Error processing image: {e}")
+        return
+    finally:
+        os.remove(temp_filename)

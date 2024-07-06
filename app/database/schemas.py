@@ -10,9 +10,21 @@ from decimal import Decimal
 import uuid
 
 
-class UserRegister(BaseModel):
+class UserLogin(BaseModel):
     """
-    Schema for user registration.
+    Schema for user login.
+
+    Attributes:
+        email (EmailStr): The email address of the user (inherited from UserRegister).
+        password (str): The password for the user account (inherited from UserRegister).
+    """
+    email: EmailStr
+    password: str
+
+
+class UserRegister(UserLogin):
+    """
+    Schema for user registration, extending from UserLogin.
 
     Attributes:
         email (EmailStr): The email address of the user.
@@ -20,8 +32,6 @@ class UserRegister(BaseModel):
         restaurant_currency (Optional[str]): The currency of the restaurant.
         tables_amount (Optional[int]): The amount of tables available.
     """
-    email: EmailStr
-    password: str
     restaurant_currency: Optional[str] = None
     tables_amount: Optional[int] = None
 
@@ -44,17 +54,6 @@ class UserCreate(UserRegister):
         if value not in ['superuser', 'restaurant']:
             raise ValueError("Role must be 'superuser' or 'restaurant'")
         return value
-
-
-class UserLogin(UserRegister):
-    """
-    Schema for user login, extending from UserRegister.
-
-    Attributes:
-        email (EmailStr): The email address of the user (inherited from UserRegister).
-        password (str): The password for the user account (inherited from UserRegister).
-    """
-    pass
 
 
 class ApproveUserRequest(BaseModel):
@@ -274,4 +273,6 @@ class DishDelete(BaseModel):
     """
     email: str
     dish_id: int = Field(..., description="ID of the dish to delete")
+
+
 

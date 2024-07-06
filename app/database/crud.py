@@ -157,7 +157,14 @@ async def crud_create_user_and_profile(db: AsyncSession,
     await db.refresh(db_user)
 
     if role == 'restaurant':
-        db_profile = UserProfile(user_id=db_user.id, tables_amount=tables_amount or 0)
+        if restaurant_currency is None or tables_amount is None:
+            raise HTTPException(status_code=400, detail="Restaurant currency and tables amount are required for restaurant role")
+
+        db_profile = UserProfile(
+            user_id=db_user.id,
+            tables_amount=tables_amount,
+            restaurant_currency=restaurant_currency  # Explicitly set the restaurant_currency
+        )
         db.add(db_profile)
         await db.commit()
         await db.refresh(db_profile)
@@ -165,8 +172,8 @@ async def crud_create_user_and_profile(db: AsyncSession,
         db_restaurant = Restaurant(
             name="Default Restaurant Name",
             rating=Decimal('0.0'),
-            currency=restaurant_currency or "USD",
-            tables_amount=tables_amount or 0
+            currency=restaurant_currency,  # Explicitly set the currency
+            tables_amount=tables_amount
         )
         db.add(db_restaurant)
         await db.commit()

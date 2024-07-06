@@ -17,9 +17,13 @@ class UserRegister(BaseModel):
     Attributes:
         email (EmailStr): The email address of the user.
         password (str): The password for the user account.
+        restaurant_currency (Optional[str]): The currency of the restaurant.
+        tables_amount (Optional[int]): The amount of tables available.
     """
     email: EmailStr
     password: str
+    restaurant_currency: Optional[str] = None
+    tables_amount: Optional[int] = None
 
 
 class UserCreate(UserRegister):
@@ -30,6 +34,8 @@ class UserCreate(UserRegister):
         email (EmailStr): The email address of the user (inherited from UserRegister).
         password (str): The password for the user account (inherited from UserRegister).
         role (str): The role of the user, can be 'superuser' or 'restaurant'.
+        restaurant_currency (Optional[str]): The currency of the restaurant.
+        tables_amount (Optional[int]): The amount of tables available.
     """
     role: str
 

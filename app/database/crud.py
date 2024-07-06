@@ -138,10 +138,11 @@ async def crud_get_dish(db: AsyncSession, dish_id: int):
 
 
 async def crud_create_user_and_profile(db: AsyncSession,
-                                  email: str,
-                                  hashed_password: str,
-                                  role: str) -> User:
-
+                                      email: str,
+                                      hashed_password: str,
+                                      role: str,
+                                      restaurant_currency: Optional[str] = None,
+                                      tables_amount: Optional[int] = None) -> User:
     query = select(User).filter(User.email == email)
     result = await db.execute(query)
     db_user = result.scalars().first()
@@ -156,7 +157,7 @@ async def crud_create_user_and_profile(db: AsyncSession,
     await db.refresh(db_user)
 
     if role == 'restaurant':
-        db_profile = UserProfile(user_id=db_user.id, tables_amount=0)
+        db_profile = UserProfile(user_id=db_user.id, tables_amount=tables_amount or 0)
         db.add(db_profile)
         await db.commit()
         await db.refresh(db_profile)
@@ -164,8 +165,8 @@ async def crud_create_user_and_profile(db: AsyncSession,
         db_restaurant = Restaurant(
             name="Default Restaurant Name",
             rating=Decimal('0.0'),
-            currency="USD",
-            tables_amount=0
+            currency=restaurant_currency or "USD",
+            tables_amount=tables_amount or 0
         )
         db.add(db_restaurant)
         await db.commit()
@@ -176,7 +177,6 @@ async def crud_create_user_and_profile(db: AsyncSession,
         await db.commit()
         await db.refresh(db_profile)
 
-        # Create a folder for the restaurant
         restaurant_folder = os.path.join(MAIN_PHOTO_FOLDER, str(db_restaurant.id))
         if not os.path.exists(restaurant_folder):
             os.makedirs(restaurant_folder)

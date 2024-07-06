@@ -126,15 +126,15 @@ async def login(userlogin: UserLogin,
 #             "user_id": str(db_user.id)}
 
 
-@router.post("/register", description="Registers a new user and returns registration details.")
+@router.post("/register", description="Registers a new user with restaurant details and returns registration details.")
 async def register_user(user_register: UserRegister,
                         request: Request,
                         db: AsyncSession = Depends(get_session)):
     """
-    Registers a new user and returns registration details.
+    Registers a new user with restaurant details and returns registration details.
 
     Args:
-        user_register (UserRegister): The user registration data containing email and password.
+        user_register (UserRegister): The user registration data containing email, password, restaurant currency, and tables amount.
         request (Request): The incoming request object.
         db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
 
@@ -151,7 +151,8 @@ async def register_user(user_register: UserRegister,
 
     hashed_password = get_password_hash(user_register.password)
 
-    db_user = await crud_create_user_and_profile(db, user_register.email, hashed_password, "restaurant")
+    db_user = await crud_create_user_and_profile(db, user_register.email, hashed_password, "restaurant",
+                                                 user_register.restaurant_currency, user_register.tables_amount)
 
     return {"message": f"{db_user.role.capitalize()} successfully registered",
             "email": str(db_user.email),

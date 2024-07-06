@@ -103,13 +103,14 @@ async def approve(request: ApproveUserRequest,
     return {"message": f"User {user.email} approved successfully"}
 
 
-@router.post("/create_new_user", description="Create a new user. (Only for superusers)")
+@router.post("/create_new_user", description="Create a new user with specified role and restaurant details. (Only for superusers)")
 async def create_user(user_create: UserCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)):
     """
-    Create a new user, the restaurant or the superuser (Only for superusers).
+    Create a new user with specified role and restaurant details. (Only for superusers)
 
     Args:
-        user_create (UserCreate): The request containing the details of the user to be created.
+        user_create (UserCreate): The request containing the details of the user to be created,
+        including role, email, password, restaurant currency, and tables amount.
         current_user (User): The current authenticated user, obtained from the dependency.
         db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
 
@@ -124,7 +125,8 @@ async def create_user(user_create: UserCreate, current_user: User = Depends(get_
 
     hashed_password = get_password_hash(user_create.password)
 
-    db_user = await crud_create_user_and_profile(db, user_create.email, hashed_password, user_create.role)
+    db_user = await crud_create_user_and_profile(db, user_create.email, hashed_password, user_create.role,
+                                                 user_create.restaurant_currency, user_create.tables_amount)
 
     return {"message": f"{db_user.role.capitalize()} successfully registered",
             "email": str(db_user.email),

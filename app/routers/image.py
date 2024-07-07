@@ -80,7 +80,12 @@ async def upload_file(file: UploadFile = File(...), restaurant_id: str = None, f
     # Check if the file extension is in the allowed list
     file_extension = filename.split('.')[-1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"File type '{file_extension}' is not allowed. Allowed types are {', '.join(ALLOWED_EXTENSIONS)}.")
+        raise HTTPException(status_code=400, detail=f"File type '{file_extension}' is not allowed. "
+                                                    f"Allowed types are {', '.join(ALLOWED_EXTENSIONS)}.")
+
+    # Check if the file size is bigger than 5 MB
+    if file.size > 5 * 1024 * 1024:
+        raise HTTPException(status_code=404, detail="File size is bigger than the allowed 5 MB.")
 
     destination = os.path.join(MAIN_PHOTO_FOLDER, restaurant_id, filename)
 
@@ -89,3 +94,26 @@ async def upload_file(file: UploadFile = File(...), restaurant_id: str = None, f
     await save_upload_file(file, destination)
     return {"filename": filename, "destination": destination}
 
+
+# @router.post("/upload/")
+# async def upload_file(file: UploadFile = File(...), restaurant_id: str = None, filename: str = None):
+#
+#     ALLOWED_EXTENSIONS = {"jpeg", "jpg", "png", "gif", "bmp", "webp"}
+#
+#     if not restaurant_id:
+#         raise HTTPException(status_code=400, detail="Restaurant ID is required.")
+#     if not filename:
+#         raise HTTPException(status_code=400, detail="Filename is required.")
+#
+#     # Check if the file extension is in the allowed list
+#     file_extension = filename.split('.')[-1].lower()
+#     if file_extension not in ALLOWED_EXTENSIONS:
+#         raise HTTPException(status_code=400, detail=f"File type '{file_extension}' is not allowed. "
+#                                                     f"Allowed types are {', '.join(ALLOWED_EXTENSIONS)}.")
+#
+#     destination = os.path.join(MAIN_PHOTO_FOLDER, restaurant_id, filename)
+#
+#     os.makedirs(os.path.dirname(destination), exist_ok=True)
+#
+#     await save_upload_file(file, destination)
+#     return {"filename": filename, "destination": destination}

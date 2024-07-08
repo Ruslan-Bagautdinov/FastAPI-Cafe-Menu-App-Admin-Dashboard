@@ -21,7 +21,7 @@ from app.database.schemas import ChangePasswordRequest, PasswordResetRequest, Em
 from app.config import HOME_EMAIL
 from app.config import LOCAL_SERVER_HOST, LOCAL_SERVER_PORT, WORK_SERVER_HOST, WORK_SERVER_PORT
 from app.config import LOCAL_SMTP_SERVER, LOCAL_SMTP_PORT, LOCAL_SENDER_EMAIL, LOCAL_SENDER_PASSWORD
-from app.config import WORK_SMTP_SERVER, WORK_SMTP_PORT, WORK_SENDER_EMAIL, WORK_SENDER_PASSWORD
+from app.config import WORK_SMTP_SERVER, WORK_SMTP_PORT, WORK_SENDER_EMAIL, WORK_SENDER_PASSWORD, PW_OK_PAGE
 
 # Determine the SMTP server configuration based on the HOME_EMAIL flag
 if HOME_EMAIL:
@@ -38,6 +38,8 @@ else:
     SMTP_PORT = WORK_SMTP_PORT
     SENDER_EMAIL = WORK_SENDER_EMAIL
     SENDER_PASSWORD = WORK_SENDER_PASSWORD
+
+
 
 router = APIRouter()
 
@@ -173,7 +175,7 @@ async def reset_password(token: str, db: AsyncSession = Depends(get_session)):
         content=f"Your new password is: {new_password}"
     )
 
-    url = f"http://185.80.234.165:1803/generated_password?email={user.email}"
+    url = f"{PW_OK_PAGE}?email={user.email}"
     return RedirectResponse(url=url)
 
 

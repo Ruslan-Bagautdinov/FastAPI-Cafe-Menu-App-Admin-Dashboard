@@ -45,3 +45,5 @@ MIME_TYPES = {
     "tiff": "image/tiff",
     "webp": "image/webp",
 }
+
+PW_OK_PAGE = os.getenv('PW_OK_PAGE')

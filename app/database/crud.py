@@ -138,11 +138,11 @@ async def crud_get_dish(db: AsyncSession, dish_id: int):
 
 
 async def crud_create_user_and_profile(db: AsyncSession,
-                                      email: str,
-                                      hashed_password: str,
-                                      role: str,
-                                      restaurant_currency: Optional[str] = None,
-                                      tables_amount: Optional[int] = None) -> User:
+                                       email: str,
+                                       hashed_password: str,
+                                       role: str,
+                                       restaurant_currency: Optional[str] = None,
+                                       tables_amount: Optional[int] = None) -> User:
     query = select(User).filter(User.email == email)
     result = await db.execute(query)
     db_user = result.scalars().first()

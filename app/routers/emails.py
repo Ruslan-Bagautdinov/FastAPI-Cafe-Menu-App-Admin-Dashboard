@@ -1,5 +1,10 @@
-from fastapi import HTTPException, status, APIRouter, Depends
+from fastapi import (HTTPException,
+                     status,
+                     APIRouter,
+                     Depends)
+from fastapi.responses import RedirectResponse
 import smtplib
+import httpx
 from email.message import EmailMessage
 import secrets
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,7 +133,7 @@ async def reset_password(token: str, db: AsyncSession = Depends(get_session)):
         db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
 
     Returns:
-        dict: A message indicating the new password was sent successfully.
+        RedirectResponse: Redirects the user to a specified URL with the email in the body of the request.
 
     Raises:
         HTTPException: 400 Bad Request if the token is invalid or has expired.
@@ -167,7 +172,13 @@ async def reset_password(token: str, db: AsyncSession = Depends(get_session)):
         recipient=user.email,
         content=f"Your new password is: {new_password}"
     )
-    return {"message": f"New password sent to {user.email}"}
+
+    url = f"http://185.80.234.165:1803/generated_password?email={user.email}"
+    return RedirectResponse(url=url)
+
+
+
+    # return {"message": f"New password sent to {user.email}"}
 
 
 @router.post("/change_password", description="Change user password")
@@ -207,7 +218,6 @@ async def change_password(request: ChangePasswordRequest,
     await db.refresh(user)
 
     return {"message": "Password changed successfully"}
-
 
 
 # @router.post("/change_password", description="Change user password")

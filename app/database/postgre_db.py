@@ -17,7 +17,10 @@ else:
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+# engine = create_async_engine(DATABASE_URL, echo=False)
+
+engine = create_async_engine(DATABASE_URL, pool_timeout=60, pool_size=250, max_overflow=50, echo=False)
+
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

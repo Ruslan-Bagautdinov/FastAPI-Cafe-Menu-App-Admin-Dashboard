@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
+
 from pydantic import BaseModel
 
 # Own imports
-from app.database.models import User
+from app.database.models import User, UserProfile, Dish
 from app.database.schemas import (DishResponse,
                                   DishCreate,
                                   DishUpdate,
@@ -22,7 +25,9 @@ from app.database.crud import (crud_create_dish,
                                crud_get_dish,
                                format_extra_prices,
                                crud_get_user_profile_by_email,
-                               crud_get_category_id_name_pairs
+                               crud_get_category_id_name_pairs,
+                               crud_get_all_categories
+
                                )
 
 router = APIRouter()
@@ -45,6 +50,43 @@ async def get_id_category_pairs(
 
     pairs = await crud_get_category_id_name_pairs(db)
     return pairs
+
+
+@router.post("/categories_in_restaurant/", description="Retrieve categories used in a restaurant linked with the user's email.")
+async def get_categories_in_restaurant(
+        email: str = Body(..., embed=True),
+        db: AsyncSession = Depends(get_session),
+        current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieve categories used in a restaurant linked with the user's email.
+
+    Args:
+        email (str): The email of the user whose linked restaurant's categories are to be retrieved.
+        db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
+        current_user (User): The current authenticated user, obtained from the dependency.
+
+    Returns:
+        CategoryResponse: The categories used in the restaurant linked with the user's email.
+
+    Raises:
+        HTTPException: 403 Forbidden if the current user does not have permission to view these categories.
+        HTTPException: 404 Not Found if the user profile or restaurant is not found.
+    """
+    profile = await crud_get_user_profile_by_email(db, email)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User profile not found")
+
+    if profile.restaurant_id is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found for the user")
+
+    if current_user.role != 'superuser' and current_user.email != email:
+        raise HTTPException(status_code=403, detail="You do not have permission to view these categories.")
+
+    category_id_name_pairs = await crud_get_category_id_name_pairs(db, profile.restaurant_id)
+
+    return category_id_name_pairs
+    # return CategoryResponse(categories=category_id_name_pairs)
 
 
 @router.post("/dish_by_id/", response_model=DishResponse, description="Retrieve a dish by its ID.")
@@ -228,3 +270,55 @@ async def delete_dish(
             raise HTTPException(status_code=404, detail=str(e))
     else:
         raise HTTPException(status_code=403, detail="You do not have permission to delete a dish for this email.")
+
+
+@router.post("/dishes_by_email/", response_model=List[DishResponse], description="Retrieve dishes by user email.")
+async def get_dishes_by_email(
+    email: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieve dishes by user email.
+
+    Args:
+        email (str): The email of the user whose dishes are to be retrieved.
+        db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
+        current_user (User): The current authenticated user, obtained from the dependency.
+
+    Returns:
+        List[DishResponse]: The dishes associated with the user's email.
+
+    Raises:
+        HTTPException: 403 Forbidden if the current user does not have permission to view these dishes.
+        HTTPException: 404 Not Found if the user profile or restaurant is not found.
+    """
+    if current_user.role == 'superuser' or current_user.email == email:
+        try:
+            profile = await db.execute(
+                select(UserProfile).options(selectinload(UserProfile.restaurant)).join(User).where(User.email == email)
+            )
+            profile = profile.scalars().first()
+            if not profile:
+                raise HTTPException(status_code=404, detail="User profile not found")
+
+            restaurant = profile.restaurant
+            if not restaurant:
+                raise HTTPException(status_code=404, detail="Restaurant not found for the user profile")
+
+            result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
+            dishes = result.scalars().all()
+            return [DishResponse(
+                id=dish.id,
+                restaurant_id=dish.restaurant_id,
+                category_id=dish.category_id,
+                name=dish.name,
+                photo=dish.photo,
+                description=dish.description,
+                price=Decimal(str(dish.price)).quantize(Decimal('0.01')),
+                extra=format_extra_prices(dish.extra)
+            ) for dish in dishes]
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    else:
+        raise HTTPException(status_code=403, detail="You do not have permission to view these dishes.")

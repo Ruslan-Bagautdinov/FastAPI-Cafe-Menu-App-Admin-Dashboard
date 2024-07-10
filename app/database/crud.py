@@ -84,6 +84,41 @@ async def crud_get_category_by_id(db: AsyncSession,
     return result.scalars().first()
 
 
+async def crud_get_category_id_name_pairs(db: AsyncSession, restaurant_id: Optional[int] = None) -> Dict[int, str]:
+    """
+    Fetches all dishes for a given restaurant_id, extracts their category_id,
+    and returns a dictionary with category_id as keys and category_name as values.
+    If restaurant_id is None, fetches all categories.
+
+    Args:
+        restaurant_id (Optional[int]): The ID of the restaurant.
+        db (AsyncSession): The SQLAlchemy asynchronous session.
+
+    Returns:
+        Dict[int, str]: A dictionary with category_id as keys and category_name as values.
+    """
+    if restaurant_id is not None:
+
+        dish_query = await db.execute(
+            select(Dish).where(Dish.restaurant_id == restaurant_id)
+        )
+        dishes = dish_query.scalars().all()
+
+        category_ids = {dish.category_id for dish in dishes}
+
+        category_query = await db.execute(
+            select(Category).where(Category.id.in_(category_ids))
+        )
+    else:
+        category_query = await db.execute(select(Category))
+
+    categories = category_query.scalars().all()
+
+    category_id_name_pairs = {category.id: category.name for category in categories}
+
+    return category_id_name_pairs
+
+
 async def crud_get_all_categories(db: AsyncSession):
 
     result = await db.execute(select(Category))

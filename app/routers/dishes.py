@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
+from typing import Optional
+from pydantic import BaseModel
 
 # Own imports
 from app.database.models import User
@@ -14,54 +16,35 @@ from app.utils.security import get_current_user
 from app.database.crud import (crud_create_dish,
                                crud_update_dish,
                                crud_delete_dish,
+                               crud_get_restaurant_by_id,
                                crud_get_dishes_by_email,
                                crud_get_email_for_dish,
                                crud_get_dish,
                                format_extra_prices,
-                               crud_get_user_profile_by_email
+                               crud_get_user_profile_by_email,
+                               crud_get_category_id_name_pairs
                                )
 
 router = APIRouter()
 
 
-@router.post("/all_dishes_by_email/", response_model=list[DishResponse], description="Retrieve all dishes by user email.")
-async def get_all_dishes_by_email(
-    email: str = Body(..., embed=True),
-    db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+@router.get("/all_categories/",
+             description="Retrieve a dictionary mapping category IDs to their names.")
+async def get_id_category_pairs(
+        db: AsyncSession = Depends(get_session)
 ):
     """
-    Retrieve all dishes by user email.
+    Retrieves a dictionary mapping category IDs to their names for a specified restaurant or all categories if no restaurant is specified.
 
     Args:
-        email (str): The email of the user whose dishes are to be retrieved.
         db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
-        current_user (User): The current authenticated user, obtained from the dependency.
 
     Returns:
-        list[DishResponse]: A list of dishes associated with the given email.
-
-    Raises:
-        HTTPException: 403 Forbidden if the current user does not have permission to view dishes for this email.
-        HTTPException: 404 Not Found if an error occurs while retrieving the dishes.
+        dict: A dictionary where keys are category IDs and values are category names.
     """
-    if current_user.role == 'superuser' or current_user.email == email:
-        try:
-            dishes = await crud_get_dishes_by_email(db, email)
-            return [DishResponse(
-                id=dish.id,
-                restaurant_id=dish.restaurant_id,
-                category_id=dish.category_id,
-                name=dish.name,
-                photo=dish.photo,
-                description=dish.description,
-                price=dish.price,
-                extra=format_extra_prices(dish.extra)
-            ) for dish in dishes]
-        except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
-    else:
-        raise HTTPException(status_code=403, detail="You do not have permission to view dishes for this email.")
+
+    pairs = await crud_get_category_id_name_pairs(db)
+    return pairs
 
 
 @router.post("/dish_by_id/", response_model=DishResponse, description="Retrieve a dish by its ID.")

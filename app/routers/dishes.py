@@ -8,7 +8,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 # Own imports
-from app.database.models import User, UserProfile, Dish
+from app.database.models import User, UserProfile, Dish, Category
 from app.database.schemas import (DishResponse,
                                   DishCreate,
                                   DishUpdate,
@@ -272,17 +272,23 @@ async def delete_dish(
         raise HTTPException(status_code=403, detail="You do not have permission to delete a dish for this email.")
 
 
-@router.post("/dishes_by_email/", response_model=List[DishResponse], description="Retrieve dishes by user email.")
+@router.post("/dishes_by_email/",
+             response_model=List[DishResponse],
+             description=(f"Retrieve dishes by user email. "
+                          f"If a category is provided, "
+                          f"only dishes from that category are returned."))
 async def get_dishes_by_email(
     email: str = Body(..., embed=True),
+    category: Optional[int] = Body(None, embed=True),
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Retrieve dishes by user email.
+    Retrieve dishes by user email. If a category is provided, only dishes from that category are returned.
 
     Args:
         email (str): The email of the user whose dishes are to be retrieved.
+        category (Optional[str]): The category of dishes to filter by.
         db (AsyncSession): The SQLAlchemy asynchronous session, obtained from the dependency.
         current_user (User): The current authenticated user, obtained from the dependency.
 
@@ -306,7 +312,18 @@ async def get_dishes_by_email(
             if not restaurant:
                 raise HTTPException(status_code=404, detail="Restaurant not found for the user profile")
 
-            result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
+            if category:
+                category_query = await db.execute(select(Category).where(Category.id == category))
+                category_obj = category_query.scalars().first()
+                if not category_obj:
+                    raise HTTPException(status_code=404, detail="Category not found")
+
+                result = await db.execute(
+                    select(Dish).where(Dish.restaurant_id == restaurant.id).where(Dish.category_id == category_obj.id)
+                )
+            else:
+                result = await db.execute(select(Dish).where(Dish.restaurant_id == restaurant.id))
+
             dishes = result.scalars().all()
             return [DishResponse(
                 id=dish.id,

@@ -29,7 +29,7 @@ Base = declarative_base()
 
 async def init_db():
     try:
-        engine = create_async_engine(DATABASE_URL, echo=False)
+        engine = create_async_engine(DATABASE_URL, pool_timeout=60, pool_size=250, max_overflow=50, echo=False)
         async with engine.begin() as conn:
             logger.debug("Creating tables...")
             await conn.run_sync(Base.metadata.create_all)

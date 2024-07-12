@@ -128,7 +128,9 @@ class WaiterCall(Base):
     __tablename__ = 'waiter_calls'
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    call_datetime: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
     restaurant_id: Mapped[int] = mapped_column(Integer, nullable=False)
     table_id: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False)
+
 

@@ -1,4 +1,4 @@
-# FastAPI Admin Dashboard
+# FastAPI Cafe App Admin Dashboard
 
 FastAPI Admin Dashboard is a backend service for a React app, providing an admin dashboard for the cafe app. It allows users to login as a superuser (admin) or a cafe owner (user). Users can manage their cafe profiles, dishes, and passwords. Superusers can manage all cafes and users.
 

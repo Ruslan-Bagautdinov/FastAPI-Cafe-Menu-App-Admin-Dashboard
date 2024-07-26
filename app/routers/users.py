@@ -1,3 +1,6 @@
+
+
+
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -155,3 +158,22 @@ async def delete_user(email: str = Body(..., embed=True), current_user: User = D
     await crud_delete_user_and_profile(db, email)
 
     return {"message": "User and associated profile and restaurant successfully deleted"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
